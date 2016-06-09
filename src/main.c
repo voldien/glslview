@@ -12,8 +12,7 @@ const char* vertex = ""
 "layout(location = 0) in vec3 vertex;\n"
 "void main(void){\n"
 "gl_Position = vec4(vertex, 1);\n"
-"}\n"
-"";
+"}\n";
 
 /**/
 float quad[4][3] = {
@@ -26,8 +25,8 @@ float quad[4][3] = {
 
 ExWin window;
 ExBoolean fullscreen = 0;
-ExBoolean verbose;
-unsigned int rendererapi = EX_OPENGL;
+ExBoolean verbose = 0;
+unsigned int rendererapi = EX_OPENGL_CORE;
 unsigned int isAlive = TRUE;
 unsigned int ifd = 0;
 char* fragPath;
@@ -36,24 +35,26 @@ char* fragPath;
 /**/
 static int private_readargument(int argc, char** argv, int pre){
 	static struct option longoption[] = {
-			{"version", optional_argument, NULL, 'v'},
-			{"Verbose", optional_argument, NULL, 'v'},
-			{"alpha", no_argument, NULL, 'a'},
-			{"wallpaper", no_argument, NULL, 'w'},
-			{"fullscreen", no_argument, NULL, 'f'},
-			{"renderer", optional_argument, NULL, 'r'},
-			{"no-decoration", optional_argument, NULL, 'd'},
-			{"debug", optional_argument, NULL, 'd'},
-			{"notify-file", optional_argument, NULL, 'n'},
+			{"version", 		optional_argument, NULL, 'v'},
+			{"Verbose", 		optional_argument, NULL, 'V'},
+			{"alpha", 			no_argument, NULL, 'a'},
+			{"wallpaper", 		no_argument, NULL, 'w'},
+			{"fullscreen", 		no_argument, NULL, 'f'},
+			{"vsync", 			no_argument, NULL, 's'},
+			{"renderer", 		required_argument, NULL, 'r'},
+			{"no-decoration", 	optional_argument, NULL, 'd'},
+			{"debug", 			optional_argument, NULL, 'd'},
+			{"notify-file", 	optional_argument, NULL, 'n'},
+			{"opengl", 			required_argument, NULL, 'g'},
+			{"antialiasing", 			required_argument, NULL, 'g'},
 			{NULL, NULL, NULL, NULL}
-
 	};
 
 	int c;
 	int index;
 
 	if(pre == 0){
-		while((c = getopt_long(argc, argv, "vhs:ar:w", longoption, &index)) != EOF){
+		while((c = getopt_long(argc, argv, "vhs:ar:wg:", longoption, &index)) != EOF){
 			switch(c){
 			case 'v':
 				printf("version %d.%d.%d\n", 0, 0, 0);
@@ -72,9 +73,22 @@ static int private_readargument(int argc, char** argv, int pre){
 					if(strcmp(optarg, "opengl") == 0){
 						rendererapi = EX_OPENGL;
 					}
+					if(strcmp(optarg, "openglcore") == 0){
+						rendererapi = EX_OPENGL_CORE;
+					}
 					else if(strcmp(optarg, "opengles") == 0){
 						rendererapi = EX_OPENGLES;
 					}
+				}
+				break;
+			case 'g':
+				if(optarg){
+					int len = strlen(optarg);
+					if(len > 3){
+						continue;
+					}
+					ExOpenGLSetAttribute(EX_OPENGL_MAJOR_VERSION, atoi(optarg) / 100);
+					ExOpenGLSetAttribute(EX_OPENGL_MINOR_VERSION, (atoi(optarg) % 100 ) / 10);
 				}
 				break;
 			case '\?':
@@ -87,13 +101,16 @@ static int private_readargument(int argc, char** argv, int pre){
 		fragPath = argv[optind];
 
 	}else if(pre == 1){
-		while((c = getopt_long(argc, argv, "vhs:fw", &longoption, &index)) != EOF){
+		while((c = getopt_long(argc, argv, "vhs:fws", &longoption, &index)) != EOF){
 			switch(c){
 			case 'f':
 				ExGLFullScreen(TRUE, window, 0, NULL);
 				break;
 			case 'w':
 				ExSetWindowParent(ExGetDesktopWindow(), window);
+				break;
+			case 's':
+				ExOpenGLSetVSync(TRUE, ExGetCurrentGLDrawable());
 				break;
 			case 'n':
 				ifd = inotify_init();
@@ -117,10 +134,11 @@ static int private_readargument(int argc, char** argv, int pre){
 /**/
 struct uniform_location_t{
 	unsigned int time;
-	unsigned int viewsize;
+	unsigned int resolution;
 	unsigned int deltatime;
-	unsigned int cursor;
+	unsigned int mouse;		/*	mouse	*/
 	unsigned int offset;
+	unsigned int backbuffer;
 };
 
 
@@ -151,10 +169,6 @@ int main(int argc, char** argv){
 		return EXIT_FAILURE;
 	}
 
-
-	ExOpenGLSetAttribute(EX_OPENGL_CONTEXT_PROFILE_MASK, EX_GL_CONTEXT_PROFILE_CORE);
-	ExOpenGLSetAttribute(EX_OPENGL_CONTEXT_FLAGS, 0);
-
 	ExGetPrimaryScreenSize(&size);
 	window = ExCreateWindow(size.width / 4, size.height / 4, size.width / 2, size.height / 2, rendererapi);
 	if(!window){
@@ -163,6 +177,7 @@ int main(int argc, char** argv){
 	ExShowWindow(window);
 	ExGetApplicationName(title, sizeof(title));
 	ExSetWindowTitle(window, title);
+	printf("%d\n", ExGetOpenGLVersion(NULL, NULL));
 	ExSetWindowPos(window, size.width / 4, size.height / 4);
 
 
@@ -179,8 +194,8 @@ int main(int argc, char** argv){
 		return EXIT_FAILURE;
 	}else{
 		uniform.time = glGetUniformLocation(shader.program, "time");
-		uniform.viewsize = glGetUniformLocation(shader.program, "resolution");
-		uniform.cursor = glGetUniformLocation(shader.program, "cursor");
+		uniform.resolution = glGetUniformLocation(shader.program, "resolution");
+		uniform.mouse = glGetUniformLocation(shader.program, "mouse");
 		uniform.offset = glGetUniformLocation(shader.program, "offset");
 	}
 
@@ -216,7 +231,6 @@ int main(int argc, char** argv){
 		glDisable(GL_ALPHA_TEST);
 		ExSetGLTransparent(window, EX_GLTRANSPARENT_DISABLE);
 	}
-	ExOpenGLSetVSync(TRUE, drawable);
 
 	long int private_start = ExGetHiResTime();
 	while(isAlive){
@@ -230,7 +244,8 @@ int main(int argc, char** argv){
 			}
 
 			if(event.event & EX_EVENT_MOUSE_MOTION){
-				glUniform2f(uniform.cursor, event.motion.x, event.motion.y);
+				float mouse[2] = {event.motion.x, event.motion.y};
+				glUniform2fv(uniform.mouse, 1, &mouse[0]);
 			}
 
 			if(event.event & EX_EVENT_RESIZE){
@@ -238,8 +253,9 @@ int main(int argc, char** argv){
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
+				float resolution[2] = {event.size.width, event.size.height};
 				glViewport(0,0,event.size.width, event.size.height);
-				glUniform2f(uniform.viewsize, (float)event.size.width, (float)event.size.height);
+				glUniform2fv(uniform.resolution, 1, &resolution[0]);
 			}
 
 			if(event.event & EX_EVENT_ON_UNFOCUSE){
@@ -254,10 +270,14 @@ int main(int argc, char** argv){
 		glUniform1fv(uniform.time,  1, &time);
 
 
-
 		/**/
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
-		ExSwapBuffers(drawable);
+		if(rendererapi & EX_OPENGL){
+			ExSwapBuffers(drawable);
+		}
+		else if(rendererapi == EX_OPENGLES){
+			ExSwapEGLBuffer(window);
+		}
 
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
