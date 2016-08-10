@@ -1,5 +1,5 @@
 /**
-
+	glslview
     Copyright (C) 2016  Valdemar Lindberg
 
     This program is free software: you can redistribute it and/or modify
@@ -54,17 +54,18 @@ ExBoolean fullscreen = 0;					/*	*/
 ExBoolean verbose = 0;						/*	*/
 unsigned int rendererapi = EX_OPENGL_CORE;	/*	*/
 unsigned int isAlive = TRUE;				/*	*/
-int ifd = 0;								/*	*/
-int wd = 0;									/*	*/
+int ifd = -1;								/*	*/
+int wd = -1;									/*	*/
 char* fragPath = NULL;						/*	*/
 char* inotifybuf = NULL;					/*	*/
 unsigned int fbo = 0;						/*	*/
-ExTexture textures[8];						/*	*/
+ExTexture ftex = {0};						/*	*/
+ExTexture textures[8] = {0};				/*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
 int use_stdin_as_buffer = 0;				/*	*/
 
 
-
+/**/
 static int privatefprintf(const char* format,...){
 	va_list larg;
 	int status;
@@ -132,8 +133,13 @@ static int private_readargument(int argc, char** argv, int pre){
 				ExOpenGLSetAttribute(EX_OPENGL_FRAMEBUFFER_SRGB_CAPABLE, TRUE);
 				break;
 			case 'A':
-				ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, 0);
 				ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLEBUFFERS, TRUE);
+				if(optarg){
+					ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, atoi(optarg));
+				}
+				else{
+					ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, 2);
+				}
 				privatefprintf("Set multisample framebuffer.\n");
 
 				break;
@@ -201,6 +207,7 @@ static int private_readargument(int argc, char** argv, int pre){
 				ExGLFullScreen(TRUE, window, 0, NULL);
 				break;
 			case 'w':
+				privatefprintf("Set as wallpaper.\n");
 				ExSetWindowParent(ExGetDesktopWindow(), window);
 				break;
 			case 's':
@@ -209,6 +216,7 @@ static int private_readargument(int argc, char** argv, int pre){
 				break;
 			case 'n':{
 				char buf[PATH_MAX];
+				privatefprintf("Initialize inotify.\n");
 				ifd = inotify_init();
 				if(ifd < 0){
 					exit(EXIT_FAILURE);
@@ -218,8 +226,8 @@ static int private_readargument(int argc, char** argv, int pre){
 				if(( wd = inotify_add_watch(ifd, buf, IN_MODIFY)) < 0){
 					exit(EXIT_FAILURE);
 				}
-				privatefprintf("Initialize inotify.\n");
-				privatefprintf("Added %s to inotify watch.\n", buf);
+
+				privatefprintf("Added %s directory to inotify watch.\n", buf);
 				inotifybuf = malloc(4096);
 			case 't':
 				if(optarg){
@@ -231,7 +239,6 @@ static int private_readargument(int argc, char** argv, int pre){
 					*/
 					//ExCreateTexture(&text[0], GL_TEXTURE_2D, 0, GL_RGB, )
 				}
-				break;
 			}break;
 			default:
 				break;
@@ -291,17 +298,21 @@ int main(int argc, char** argv){
 
 	ExSize size;							/**/
 	ExChar title[512];						/**/
-	float screen[2];
+	float screen[2];						/**/
 
-	char* fragData = NULL;
-	int x;
+	char* fragData = NULL;					/**/
+	int x;									/**/
 
-	unsigned int vao;
-	unsigned int vbo;
-	long int private_start = ExGetHiResTime();
+	unsigned int vao;							/**/
+	unsigned int vbo;							/**/
+	long int private_start = ExGetHiResTime();	/**/
+
 	/**/
 	long int pretime;
 	float time;
+	fd_set readfd;
+	unsigned int numfd = 1;
+	struct timeval timeval;
 
 	/*	*/
 	isPipe = isatty(STDIN_FILENO) == 0;
@@ -316,10 +327,10 @@ int main(int argc, char** argv){
 	}
 
 	privatefprintf("\n");
-	privatefprintf("glslview v%d.%d%d\n========================\n\n", 1, 0, 0);
+	privatefprintf("glslview v%d.%d%d\n========================\n\n", 0, 5, 0);
 
 	/*	initialize ELT.	*/
-	if(ExInit(0) == 0){
+	if(ExInit(ELT_INIT_NONE) == 0){
 		status = EXIT_FAILURE;
 		goto error;
 	}
@@ -421,7 +432,6 @@ int main(int argc, char** argv){
 	glBindVertexArray(0);
 
 
-
 	drawable = ExGetCurrentGLDrawable();
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -433,8 +443,10 @@ int main(int argc, char** argv){
 
 	/*	bind all  textures.	*/
 	for(x = 0; x < numTextures; x++){
-		glActiveTexture(GL_TEXTURE0 + x);
-		glBindTexture(textures[x].target, textures[x].texture);
+		if(ExIsTexture(&textures[x])){
+			glActiveTexture(GL_TEXTURE0 + x);
+			glBindTexture(textures[x].target, textures[x].texture);
+		}
 	}
 
 	/**/
@@ -455,21 +467,30 @@ int main(int argc, char** argv){
 	private_start = ExGetHiResTime();
 	pretime = ExGetHiResTime();
 
+	if(ifd > 0 ){
+		timeval.tv_sec = 0;
+		timeval.tv_usec = 1000;
+	}else{
+		timeval.tv_sec = 0;
+		timeval.tv_usec = 0;
+	}
+
 	/*	*/
 	while(isAlive){
 		int ret;
-		struct pollfd pfd = {ifd, POLLIN, 0};
+
 		/**/
 		while(ExPollEvent(&event)){
 
+			/**/
 			if(event.event & EX_EVENT_KEY_PRESSED){
 				if(event.key.code == EXK_ENTER && event.key.ctrl){
 					fullscreen = ~fullscreen & 0x1;
 					ExGLFullScreen(fullscreen, window, 0, NULL);
-
 				}
 			}
 
+			/**/
 			if(event.event & EX_EVENT_MOUSE_MOTION){
 				float mouse[2] = {event.motion.x / screen[0], event.motion.y / screen[1]};
 				glUniform2fv(uniform.mouse, 1, &mouse[0]);
@@ -510,12 +531,12 @@ int main(int argc, char** argv){
 			}
 		}
 
-
-		/**/
-		ret = poll(&pfd, wd, 1);
+		FD_ZERO(&readfd);
+		FD_SET(ifd, &readfd);
+		ret = select(FD_SETSIZE, &readfd, NULL, NULL, &timeval);
 
 		if(ret < 0){
-			privatefprintf("poll failed: %s\n", strerror(errno));
+			privatefprintf("select failed: %s\n", strerror(errno));
 		}
 		else if(ret == 0){
 			float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
@@ -525,6 +546,7 @@ int main(int argc, char** argv){
 			if(use_stdin_as_buffer){
 				int buffer;
 				read(STDIN_FILENO, &buffer, sizeof(buffer));
+				glUniform1iv(uniform.stdin, 1, &buffer);
 			}
 
 			/*	draw quad.	*/
@@ -541,14 +563,17 @@ int main(int argc, char** argv){
 
 			glClear(GL_COLOR_BUFFER_BIT);
 		}else{
+			char buffer[PATH_MAX];
 			/**/
 			struct inotify_event event;
 			int nbytes;
 			/**/
 			while( (nbytes = read(ifd, &event, sizeof(event))) > 0){
+				privatefprintf("inotify fetchining.");
+				read(ifd, &buffer, event.len);
 
 				if(event.mask & IN_MODIFY){
-					privatefprintf("update");
+					privatefprintf("Updating %s\n", event.name);
 					ExDeleteShaderProgram(&shader);
 					memset(&shader, 0, sizeof(shader));
 					if(ExLoadShaderv(&shader, vertex, fragData, NULL, NULL, NULL)){
@@ -563,6 +588,7 @@ int main(int argc, char** argv){
 	error:	/*	*/
 
 	privatefprintf("glslview is terminating.\n");
+
 
 	/**/
 	if(ExGetCurrentOpenGLContext()){
