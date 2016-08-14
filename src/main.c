@@ -49,20 +49,32 @@ static const float quad[4][3] = {
 
 };
 
-ExWin window;								/*	*/
-ExBoolean fullscreen = 0;					/*	*/
-ExBoolean verbose = 0;						/*	*/
-unsigned int rendererapi = EX_OPENGL_CORE;	/*	*/
-unsigned int isAlive = TRUE;				/*	*/
-int ifd = -1;								/*	*/
+ExWin window;									/*	*/
+ExBoolean fullscreen = 0;						/*	*/
+ExBoolean verbose = 0;							/*	*/
+unsigned int rendererapi = EX_OPENGL_CORE;		/*	*/
+unsigned int isAlive = TRUE;					/*	*/
+int ifd = -1;									/*	*/
 int wd = -1;									/*	*/
-char* fragPath = NULL;						/*	*/
-char* inotifybuf = NULL;					/*	*/
-unsigned int fbo = 0;						/*	*/
-ExTexture ftex = {0};						/*	*/
-ExTexture textures[8] = {0};				/*	*/
+char* fragPath = NULL;							/*	*/
+char* inotifybuf = NULL;						/*	*/
+unsigned int fbo = 0;							/*	*/
+ExTexture ftex = {0};							/*	*/
+ExTexture textures[8] = {0};					/*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
-int use_stdin_as_buffer = 0;				/*	*/
+int use_stdin_as_buffer = 0;					/*	*/
+
+
+
+#ifndef GLSLVIEW_MAJOR_VERSION
+	#define GLSLVIEW_MAJOR_VERSION	0
+#endif
+#ifndef GLSLVIEW_MINOR_VERSION
+	#define GLSLVIEW_MINOR_VERSION	5
+#endif
+#ifndef GLSLVIEW_REVISION_VERSION
+	#define GLSLVIEW_REVISION_VERSION 0
+#endif
 
 
 /**/
@@ -80,7 +92,7 @@ static int privatefprintf(const char* format,...){
 }
 
 /**/
-static int private_readargument(int argc, char** argv, int pre){
+static int private_readargument(int argc, const char** argv, int pre){
 	static const struct option longoption[] = {
 			{"version", 		no_argument, NULL, 'v'},				/*	application version.	*/
 			{"alpha", 			no_argument, NULL, 'a'},				/*	use alpha channel.	*/
@@ -94,11 +106,12 @@ static int private_readargument(int argc, char** argv, int pre){
 			{"no-decoration", 	optional_argument, NULL, 'd'},			/*	*/
 			{"debug", 			optional_argument, NULL, 'd'},			/*	set application in debug mode.	*/
 			{"antialiasing", 	optional_argument, NULL, 'A'},			/*	anti aliasing.	*/
+			{"file", 			required_argument, NULL, 'f'},			/*	opengl version.	*/
 			{"opengl", 			required_argument, NULL, 'g'},			/*	opengl version.	*/
 			{"renderer", 		required_argument, NULL, 'r'},			/*	render api.	*/
 			{"resolution-scale",required_argument, NULL, 'R'},			/*	texture scale resolution (required gl_framebuffer_object).*/
 			{"texture",			required_argument, NULL, 't'},			/*	texture.	*/
-
+			{"opencl",			required_argument, NULL, 'c'},			/*	opencl.	*/
 
 			{NULL, NULL, NULL, NULL}
 	};
@@ -106,15 +119,15 @@ static int private_readargument(int argc, char** argv, int pre){
 	int c;
 	int index;
 	int status = 1;
-	const char* shortopts_f = "Ivhs:ar:wg:V";
-	const char* shortopts_s = "t:vhs:fwst:nA:";
+	const char* shortopts_f = "Ivhs:ar:wg:Vf:";		/**/
+	const char* shortopts_s = "t:vhs:fwst:nA:";		/**/
 
 	/**/
 	if(pre == 0){
 		while((c = getopt_long(argc, argv, shortopts_f, longoption, &index)) != EOF){
 			switch(c){
 			case 'v':{
-				printf("Version %d.%d.%d\n", 1, 0, 0);
+				printf("Version %d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
 				return (2);
 			}
 			case 'V':
@@ -175,6 +188,11 @@ static int private_readargument(int argc, char** argv, int pre){
 				use_stdin_as_buffer = True;
 				privatefprintf("Stdin used as input buffer for glsl shader.\n");
 				break;
+			case 'f':
+				if(optarg){
+					fragPath = optarg;
+				}
+				break;
 			case '\?':
 			case ':':
 			default:
@@ -183,7 +201,9 @@ static int private_readargument(int argc, char** argv, int pre){
 		}
 
 		/*	fragment path is the only argument without a option.	*/
-		fragPath = argv[optind];
+		if(c == -1){
+			fragPath = argv[optind];
+		}
 
 	}else if(pre == 1){
 		while((c = getopt_long(argc, argv, shortopts_s, longoption, &index)) != EOF){
@@ -231,13 +251,19 @@ static int private_readargument(int argc, char** argv, int pre){
 				inotifybuf = malloc(4096);
 			case 't':
 				if(optarg){
-					/*
-					FIBITMAP bitmap;
+					int numTexs;
+					argv[optind];
+					FIBITMAP* bitmap;
 					FreeImage_Initialise(0);
-					bitmap = FreeImage_Load(FreeImage_GetFileType(optarg), optarg, 0);
-					FreeImage_GetBits(bitmap);
-					*/
-					//ExCreateTexture(&text[0], GL_TEXTURE_2D, 0, GL_RGB, )
+					bitmap = FreeImage_Load(FreeImage_GetFileType(optarg, 0), optarg, 0);
+					if(bitmap){
+						privatefprintf("reading texture %s\n", optarg);
+						ExCreateTexture(&textures[0], GL_TEXTURE_2D, 0, GL_RGB, FreeImage_GetWidth(bitmap),
+								FreeImage_GetHeight(bitmap), 0, GL_RGB, GL_UNSIGNED_BYTE, FreeImage_GetBits(bitmap));
+						FreeImage_Unload(bitmap);
+					}
+					FreeImage_DeInitialise();
+
 				}
 			}break;
 			default:
@@ -286,22 +312,38 @@ void catchSig(int signal){
 	}
 }
 
-int main(int argc, char** argv){
+void displaygraphic(ExWin drawable){
+	/*	draw quad.	*/
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
+
+
+	/*	TODO improve.	*/
+	if(rendererapi & EX_OPENGL){
+		ExSwapBuffers(drawable);
+	}
+	else if(rendererapi == EX_OPENGLES){
+		ExSwapEGLBuffer(window);
+	}
+
+}
+
+
+int main(int argc, const char** argv){
 	ERESULT status = EXIT_SUCCESS;
 
-	ExEvent event = {0};					/**/
-	ExWin drawable = NULL;					/**/
-	struct uniform_location_t uniform = {0};/**/
-	ExShader shader = {0};					/**/
-	unsigned int isPipe;					/**/
+	ExEvent event = {0};						/**/
+	ExWin drawable = NULL;						/**/
+	struct uniform_location_t uniform = {0};	/**/
+	ExShader shader = {0};						/**/
+	unsigned int isPipe;						/**/
 
 
-	ExSize size;							/**/
-	ExChar title[512];						/**/
-	float screen[2];						/**/
+	ExSize size;								/**/
+	ExChar title[512];							/**/
+	float screen[2];							/**/
 
-	char* fragData = NULL;					/**/
-	int x;									/**/
+	char* fragData = NULL;						/**/
+	int x;										/**/
 
 	unsigned int vao;							/**/
 	unsigned int vbo;							/**/
@@ -327,7 +369,7 @@ int main(int argc, char** argv){
 	}
 
 	privatefprintf("\n");
-	privatefprintf("glslview v%d.%d%d\n========================\n\n", 0, 5, 0);
+	privatefprintf("glslview v%d.%d%d\n========================\n\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
 
 	/*	initialize ELT.	*/
 	if(ExInit(ELT_INIT_NONE) == 0){
@@ -539,9 +581,9 @@ int main(int argc, char** argv){
 			privatefprintf("select failed: %s\n", strerror(errno));
 		}
 		else if(ret == 0){
+
 			float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
 			glUniform1fv(uniform.time,  1, &time);
-
 			/**/
 			if(use_stdin_as_buffer){
 				int buffer;
@@ -549,20 +591,11 @@ int main(int argc, char** argv){
 				glUniform1iv(uniform.stdin, 1, &buffer);
 			}
 
-			/*	draw quad.	*/
-			glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
-
-
-			/*	TODO improve.	*/
-			if(rendererapi & EX_OPENGL){
-				ExSwapBuffers(drawable);
-			}
-			else if(rendererapi == EX_OPENGLES){
-				ExSwapEGLBuffer(window);
-			}
-
+			displaygraphic(drawable);
 			glClear(GL_COLOR_BUFFER_BIT);
+
 		}else{
+
 			char buffer[PATH_MAX];
 			/**/
 			struct inotify_event event;
@@ -582,6 +615,7 @@ int main(int argc, char** argv){
 					glUseProgram(shader.program);
 				}
 			}
+
 		}
 	}/*	*/
 
