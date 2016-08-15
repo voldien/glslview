@@ -1,24 +1,30 @@
-cmake_minimum_required(VERSION 2.8.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0)
 PROJECT(glslview)
 
 
-
-EXECUTE_PROCESS(COMMAND " git describe | sed -e 's/[^0-9]*//g' | cut -c1-1 "
-	    OUTPUT_VARIABLE _vd_major OUTPUT_STRIP_TRAILING_WHITESPACE
+execute_process(COMMAND git describe
+		COMMAND sed -e "s/[^0-9]*//g"
+		COMMAND cut -c1-1
+	    OUTPUT_VARIABLE _major_version OUTPUT_STRIP_TRAILING_WHITESPACE
 	    RESULT_VARIABLE _major_version_failed)
 
-EXECUTE_PROCESS(COMMAND  " git describe | sed -e 's/[^0-9].[^0-9]*//g' | cut -c1-1 "
-	    OUTPUT_VARIABLE _vd_minor OUTPUT_STRIP_TRAILING_WHITESPACE
+execute_process(COMMAND git describe
+		COMMAND sed -e "s/[^0-9].[^0-9]*//g"
+		COMMAND cut -c1-1
+	    OUTPUT_VARIABLE _minor_version OUTPUT_STRIP_TRAILING_WHITESPACE
 	    RESULT_VARIABLE _minor_version_failed)
 
-EXECUTE_PROCESS(COMMAND "git describe | sed -e 's/[^0-9].[^0-9].[^0-9]*//g' | cut -c1-2"
-	    OUTPUT_VARIABLE _vd_revision OUTPUT_STRIP_TRAILING_WHITESPACE
+execute_process(COMMAND git describe
+		COMMAND sed -e "s/[^0-9].[^0-9].[^0-9]*//g"
+		COMMAND cut -c1-2
+	    OUTPUT_VARIABLE _revision_version OUTPUT_STRIP_TRAILING_WHITESPACE
 	    RESULT_VARIABLE _revision_version_failed)
 
 
+#	Add version.
+ADD_DEFINITIONS(-DGLSLVIEW_MAJOR_VERSION=${_major_version} -DGLSLVIEW_MINOR_VERSION=${_minor_version} -DGLSLVIEW_REVISION_VERSION=${_revision_version})
 
-
-
+#	GCC Compiler.
 if((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_IS_MINGW)
   	if (BUILD_SHARED_LIBS AND CMAKE_SIZEOF_VOID_P EQUAL 8) # -fPIC is only required
 		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
@@ -52,15 +58,28 @@ if((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_
 	#ENDIF()
 endif()
 
+INCLUDE(FindOpenGL)
+IF(OPENGL_FOUND)
 
+ENDIF()
 
 
 FILE(GLOB core ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c )
 ADD_EXECUTABLE(glslview ${core} )
-TARGET_LINK_LIBRARIES(glslview -lEngineEx -lGL)
 
-
+TARGET_LINK_LIBRARIES(glslview -lEngineEx ${OPENGL_LIBRARIES} -lfreeimage)
 
 INSTALL(TARGETS glslview DESTINATION bin)
+IF( UNIX )
+	EXECUTE_PROCESS(OUTPUT_FILE glslview.1.gz
+			COMMAND gzip -ck glslview.1)
+	INSTALL(FILES glslview.1.gz DESTINATION /usr/share/man/man1/)
+	EXECUTE_PROCESS(COMMAND mandb)
+ENDIF()
+#INSTALL(TARGETS glslview.1 DESTINATION man)
+
+
+
+
 
 
