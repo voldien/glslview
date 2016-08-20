@@ -66,7 +66,7 @@ ExTexture ftex = {0};							/*	*/
 ExTexture textures[8] = {0};					/*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
-int use_stdin_as_buffer = 0;					/*	*/
+unsigned int use_stdin_as_buffer = 0;					/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
 
@@ -127,10 +127,11 @@ static int private_readargument(int argc, const char** argv, int pre){
 	int index;
 	int status = 1;
 	const char* shortopts_f = "Ivhs:ar:wg:Vf:SA:";		/**/
-	const char* shortopts_s = "t:vhs:Fwsn:" ;		/**/
+	const char* shortopts_s = "t:vhs:Fwsn:" ;			/**/
 
 	/**/
 	if(pre == 0){
+		privatefprintf("--------- First argument pass -------\n\n");
 		while((c = getopt_long(argc, argv, shortopts_f, longoption, &index)) != EOF){
 			switch(c){
 			case 'v':{
@@ -178,6 +179,10 @@ static int private_readargument(int argc, const char** argv, int pre){
 						rendererapi = EX_OPENGLES;
 						privatefprintf("Set rendering API to OpenGL-ES.\n");
 					}
+					else if(strcmp(optarg, "vulkan") == 0){
+						rendererapi = EX_VULKAN;
+						privatefprintf("Set rendering API to Vulkan.\n");
+					}
 				}
 				break;
 			case 'g':
@@ -217,6 +222,8 @@ static int private_readargument(int argc, const char** argv, int pre){
 		}
 
 	}else if(pre == 1){
+		privatefprintf("--------- Second argument pass -------\n\n");
+
 		while((c = getopt_long(argc, argv, shortopts_s, longoption, &index)) != EOF){
 			switch(c){
 			case 'A':
@@ -272,10 +279,16 @@ static int private_readargument(int argc, const char** argv, int pre){
 				privatefprintf("Set fullscreen.\n");
 				ExGLFullScreen(1, window, 0, NULL);
 				break;
-			case 'w':	/*	Set as desktop wallpaper.	*/
-				privatefprintf("Set as wallpaper.\n");
+			case 'w':{	/*	Set as desktop wallpaper.	*/	/*	TODO fix for other distro other than Ubuntu.*/
+				ExSize size;
+				ExGetWindowSizev(ExGetDesktopWindow(), &size);
+				ExSetWindowSize(window, size.width, size.height);
+				ExSetWindowPos(window, 0, 0);
+				privatefprintf("Set as wallpaper %dx%d.\n", size.width, size.height);
 				ExSetWindowParent(ExGetDesktopWindow(), window);
-				break;
+
+				/*ExSetWindowFlag(window, ExGetWindowFlag(window));	*/
+			}break;
 			case 's':
 				privatefprintf("Enable V-Sync.\n");
 				ExOpenGLSetVSync(TRUE, ExGetCurrentGLDrawable());
@@ -322,7 +335,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 						bitmap = FreeImage_Load( format, argv[optind + x -1], 0 );
 
 						if(bitmap){
-							privatefprintf("Reading texture %s for uniform tex%d\n", optarg, nextTex);
+							privatefprintf("Reading texture %s for uniform tex%d.\n", optarg, nextTex);
 
 							/*	*/
 							colortype = FreeImage_GetColorType(bitmap);
@@ -344,9 +357,9 @@ static int private_readargument(int argc, const char** argv, int pre){
 							}
 
 							/**/
-							ExCreateTexture(&textures[nextTex++], GL_TEXTURE_2D, 0, ginternalformat, width,
+							ExCreateTexture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
 									height, 0, gformat, GL_UNSIGNED_BYTE, FreeImage_GetBits(bitmap));
-
+							nextTex++;
 							privatefprintf("width : %d\nheight : %d\n\n", width, height);
 
 							FreeImage_Unload(bitmap);
@@ -423,15 +436,16 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	uniform->tex7 = glGetUniformLocation(shader->program, "tex7");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
 
-	glUniform1i(uniform->tex0, 0);
-	glUniform1i(uniform->tex1, 1);
-	glUniform1i(uniform->tex2, 2);
-	glUniform1i(uniform->tex3, 3);
-	glUniform1i(uniform->tex4, 4);
-	glUniform1i(uniform->tex5, 5);
-	glUniform1i(uniform->tex6, 6);
-	glUniform1i(uniform->tex7, 7);
-	glUniform1i(uniform->backbuffer, 8);
+	privatefprintf("----------- Assigning texture sampler index ----------\n");
+	glUniform1i(uniform->tex0, numTextures - 8);
+	glUniform1i(uniform->tex1, numTextures - 7);
+	glUniform1i(uniform->tex2, numTextures - 6);
+	glUniform1i(uniform->tex3, numTextures - 5);
+	glUniform1i(uniform->tex4, numTextures - 4);
+	glUniform1i(uniform->tex5, numTextures - 3);
+	glUniform1i(uniform->tex6, numTextures - 2);
+	glUniform1i(uniform->tex7, numTextures - 1);
+	glUniform1i(uniform->backbuffer, numTextures);
 
 
 	/*	Create backbuffer.	*/
@@ -446,9 +460,11 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	}
 }
 
-
-void resize_screen(int width, int height){
-
+void resize_screen(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader){
+	float resolution[2] = {event->size.width, event->size.height};
+	glViewport(0, 0, event->size.width, event->size.height);
+	glUniform2fv(uniform->resolution, 1, &resolution[0]);
+	privatefprintf("%dx%d.\n", event->size.width, event->size.height);
 }
 
 void displaygraphic(ExWin drawable){
@@ -471,10 +487,10 @@ int main(int argc, const char** argv){
 
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
-	struct uniform_location_t uniform = {0};	/*	*/
+	long int private_start = ExGetHiResTime();	/*	*/
+	struct uniform_location_t uniform = {0};	/*	uniform.	*/
 	ExShader shader = {0};						/*	*/
 	unsigned int isPipe;						/*	*/
-
 
 	ExSize size;								/*	*/
 	ExChar title[512];							/*	*/
@@ -485,8 +501,6 @@ int main(int argc, const char** argv){
 
 	unsigned int vao = 0;						/*	*/
 	unsigned int vbo = 0;						/*	*/
-	long int private_start = ExGetHiResTime();	/*	*/
-
 
 	typedef void (*pswapbufferfunctype)(ExWin window);
 	pswapbufferfunctype* pswapbuffer = NULL;					/*	TODO resolve for EGL or GLX/WGL.	*/
@@ -494,6 +508,8 @@ int main(int argc, const char** argv){
 	/**/
 	long int pretime;
 	float time;
+
+	/**/
 	fd_set readfd;
 	unsigned int numfd = 1;
 	struct timeval timeval;
@@ -543,6 +559,7 @@ int main(int argc, const char** argv){
 	ExSetWindowTitle(window, title);
 	ExSetWindowPos(window, size.width / 2, size.height / 2);
 	ExSetWindowSize(window, size.width, size.height);
+
 
 	/*	Display OpenGL information.	*/
 	privatefprintf("-------------- OpenGL Information ------------------\n");
@@ -597,7 +614,7 @@ int main(int argc, const char** argv){
 	glBindVertexArray(vao);
 	ExGenBuffers(1, &vbo);
 
-	/**/
+	/*	*/
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
@@ -614,12 +631,17 @@ int main(int argc, const char** argv){
 	glDepthMask(FALSE);
 
 	/**/
+	ExGetWindowSizev(window, &size);
+	glViewport(0, 0, size.width, size.height);
+
+	/**/
 	glUseProgram(shader.program);
 	glBindVertexArray(vao);
 
-	/*	bind all  textures.	*/
+	/*	bind all textures.	*/
 	for(x = 0; x < numTextures; x++){
 		if(ExIsTexture(&textures[x])){
+			privatefprintf("Binding texture %d.\n", x);
 			glActiveTexture(GL_TEXTURE0 + x);
 			glBindTexture(textures[x].target, textures[x].texture);
 		}
@@ -631,7 +653,7 @@ int main(int argc, const char** argv){
 	}
 
 
-	/**/
+	/*	*/
 	if(ExOpenGLGetAttribute(EX_OPENGL_ALPHA_SIZE, NULL) > 0){
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glEnable(GL_ALPHA_TEST);
@@ -662,7 +684,6 @@ int main(int argc, const char** argv){
 
 	/*	*/
 	while(isAlive){
-		int ret;
 
 		/**/
 		while(ExPollEvent(&event)){
@@ -682,20 +703,15 @@ int main(int argc, const char** argv){
 			}
 
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
+				resize_screen(&event, &uniform, &shader);
 				screen[0] = event.size.width;
 				screen[1] = event.size.height;
-				float resolution[2] = {event.size.width, event.size.height};
-				glViewport(0, 0, event.size.width, event.size.height);
-				glUniform2fv(uniform.resolution, 1, &resolution[0]);
-				/*	update framebuffer.	*/
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
+				resize_screen(&event, &uniform, &shader);
 				screen[0] = event.size.width;
 				screen[1] = event.size.height;
-				float resolution[2] = {event.size.width, event.size.height};
-				glViewport(0, 0, event.size.width, event.size.height);
-				glUniform2fv(uniform.resolution, 1, &resolution[0]);
 			}
 
 			if(event.event & EX_EVENT_ON_UNFOCUSE){
@@ -718,7 +734,7 @@ int main(int argc, const char** argv){
 
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
-
+			int ret;
 			FD_ZERO(&readfd);
 			FD_SET(ifd, &readfd);
 			ret = select(FD_SETSIZE, &readfd, NULL, NULL, &timeval);
@@ -730,11 +746,13 @@ int main(int argc, const char** argv){
 
 				float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
 				glUniform1fv(uniform.time,  1, &time);
+
 				/**/
 				if(use_stdin_as_buffer){
 					int buffer;
-					read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size);
-					glUniform1iv(uniform.stdin, 1, (const GLint*)&buffer);
+					if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0 ){
+						glUniform1iv(uniform.stdin, 4, (const GLint*)&buffer);
+					}
 				}
 
 				displaygraphic(drawable);
@@ -772,8 +790,9 @@ int main(int argc, const char** argv){
 			/**/
 			if(use_stdin_as_buffer){
 				int buffer;
-				read(STDIN_FILENO, (void*)&buffer, sizeof(buffer));
-				glUniform1iv(uniform.stdin, 1, (const GLint*)&buffer);
+				if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
+					glUniform1iv(uniform.stdin, 4, (const GLint*)&buffer);
+				}
 			}
 
 			displaygraphic(drawable);
@@ -787,7 +806,6 @@ int main(int argc, const char** argv){
 		}
 
 	}/*	End of main while loop.	*/
-
 
 	error:	/*	*/
 
@@ -804,8 +822,15 @@ int main(int argc, const char** argv){
 		if( glIsBuffer(vbo) == GL_TRUE ){
 			glDeleteBuffers(1, &vbo);
 		}
-		if(glIsFramebuffer(fbo) == GL_TRUE){
 
+		for(x = 0; x < numTextures; x++){
+			if(ExIsTexture(&textures[x])){
+				ExDeleteTexture(&textures[x]);
+			}
+		}
+
+		if(ExIsTexture(&ftex)){
+			ExDeleteTexture(&ftex);
 		}
 
 		ExDestroyGLContext(window, ExGetCurrentOpenGLContext());
