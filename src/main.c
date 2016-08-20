@@ -30,6 +30,10 @@
 
 #include<signal.h>
 #include<sys/inotify.h>
+#define EVENT_SIZE  ( sizeof (struct inotify_event) )
+#define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
+
+
 #include<sys/poll.h>
 
 #include<FreeImage.h>
@@ -298,7 +302,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 				privatefprintf("Initialize inotify.\n");
 
 				/*	initialize inotify.	*/
-				ifd = inotify_init();
+				ifd = inotify_init1(IN_NONBLOCK);
 				if(ifd < 0){
 					fprintf(stderr, "%s\n", strerror(errno));
 					exit(EXIT_FAILURE);
@@ -307,7 +311,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 				/*	Get absolute path for inotify watch.	*/
 				ExGetAbsolutePath(fragPath, buf, sizeof(buf));
 				ExGetDirectory(buf, buf, sizeof(buf));
-				if(( wd = inotify_add_watch(ifd, buf, IN_MODIFY)) < 0){
+				if(( wd = inotify_add_watch(ifd, buf, IN_MODIFY | IN_DELETE)) < 0){
 					exit(EXIT_FAILURE);
 				}
 
@@ -436,6 +440,11 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	uniform->tex7 = glGetUniformLocation(shader->program, "tex7");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
 
+	float res[2];
+	res[0] = width;
+	res[1] = height;
+	glUniform2fv(uniform->resolution, 1, &res[0]);
+
 	privatefprintf("----------- Assigning texture sampler index ----------\n");
 	glUniform1i(uniform->tex0, numTextures - 8);
 	glUniform1i(uniform->tex1, numTextures - 7);
@@ -446,6 +455,8 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	glUniform1i(uniform->tex6, numTextures - 2);
 	glUniform1i(uniform->tex7, numTextures - 1);
 	glUniform1i(uniform->backbuffer, numTextures);
+
+
 
 
 	/*	Create backbuffer.	*/
@@ -510,7 +521,7 @@ int main(int argc, const char** argv){
 	float time;
 
 	/**/
-	fd_set readfd;
+
 	unsigned int numfd = 1;
 	struct timeval timeval;
 
@@ -681,7 +692,6 @@ int main(int argc, const char** argv){
 		timeval.tv_usec = 0;
 	}
 
-
 	/*	*/
 	while(isAlive){
 
@@ -734,6 +744,7 @@ int main(int argc, const char** argv){
 
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
+			fd_set readfd;
 			int ret;
 			FD_ZERO(&readfd);
 			FD_SET(ifd, &readfd);
@@ -750,33 +761,53 @@ int main(int argc, const char** argv){
 				/**/
 				if(use_stdin_as_buffer){
 					int buffer;
-					if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0 ){
+					if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
 						glUniform1iv(uniform.stdin, 4, (const GLint*)&buffer);
 					}
 				}
 
 				displaygraphic(drawable);
+				if(uniform.backbuffer != -1){
+					glActiveTexture(GL_TEXTURE0 + numTextures);
+					glBindTexture(ftex.target, ftex.texture);
+					glCopyTexImage2D(ftex.target, 0, GL_RGBA, 0, 0, ftex.width, ftex.height, 0);
+				}
+
 				glClear(GL_COLOR_BUFFER_BIT);
 
 			}else{
+				struct inotify_event ionevent;
 
-				char buffer[PATH_MAX];
+				char buffer[EVENT_BUF_LEN];
 				/**/
-				struct inotify_event event;
 				int nbytes;
 				/**/
-				while( (nbytes = read(ifd, &event, sizeof(event))) > 0){
-					privatefprintf("inotify fetching.");
-					read(ifd, &buffer, event.len);
+				while( (nbytes = read(ifd, &ionevent, EVENT_BUF_LEN)) > 0){
+					privatefprintf("inotify fetching.\n");
+					read(ifd, &buffer, ionevent.len);
 
-					if(event.mask & IN_MODIFY){
-						privatefprintf("Updating %s\n", event.name);
-						ExDeleteShaderProgram(&shader);
-						memset(&shader, 0, sizeof(shader));
-						if(ExLoadShaderv(&shader, vertex, fragData, NULL, NULL, NULL)){
+					if(ionevent.mask & IN_MODIFY){
+						ExSize wsize;
+						if(strcmp(ionevent.name, fragPath) == 0){
+							privatefprintf("Updating %s\n", ionevent.name);
+
+							ExDeleteShaderProgram(&shader);
+							memset(&shader, 0, sizeof(shader));
+
+							ExLoadFile(ionevent.name, &fragData);
+							if(ExLoadShaderv(&shader, vertex, fragData, NULL, NULL, NULL)){
+
+							}
+							free(fragData);
+
+							ExGetWindowSizev(window, &wsize);
+							glUseProgram(shader.program);
+							update_shader_uniform(&uniform, &shader, wsize.width, wsize.height);
 
 						}
-						glUseProgram(shader.program);
+					}
+					if(ionevent.mask & IN_DELETE){
+
 					}
 				}
 
