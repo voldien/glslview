@@ -23,20 +23,18 @@
 #include<GL/glext.h>
 
 #include<getopt.h>
-
 #include<string.h>
 #include<errno.h>
 #include<unistd.h>
+
 
 #include<signal.h>
 #include<sys/inotify.h>
 #define EVENT_SIZE  ( sizeof (struct inotify_event) )
 #define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
-
-#include<sys/poll.h>
-
 #include<FreeImage.h>
+//#include<hpm/hpm.h>
 
 /*	default vertex shader.	*/
 const char* vertex = ""
@@ -70,7 +68,7 @@ ExTexture ftex = {0};							/*	*/
 ExTexture textures[8] = {0};					/*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
-unsigned int use_stdin_as_buffer = 0;					/*	*/
+unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
 
@@ -111,7 +109,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 			{"vsync", 			no_argument, NULL, 's'},				/*	enable vsync.	*/
 			{"notify-file", 	no_argument, NULL, 'n'},				/*	enable inotify notification.	*/
 			{"srgb",			no_argument, NULL, 'S'},				/*	sRGB.	*/
-			{"stdin",			optional_argument, NULL, 'I'},				/*	stdin data as buffer.	*/
+			{"stdin",			optional_argument, NULL, 'I'},			/*	stdin data as buffer.	*/
 			{"Verbose", 		optional_argument, NULL, 'V'},			/*	Verbose.	*/
 			{"no-decoration", 	optional_argument, NULL, 'D'},			/*	*/
 			{"debug", 			optional_argument, NULL, 'd'},			/*	Set application in debug mode.	*/
@@ -133,7 +131,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 	const char* shortopts_f = "Ivhs:ar:wg:Vf:SA:";		/**/
 	const char* shortopts_s = "t:vhs:Fwsn:" ;			/**/
 
-	/**/
+	/*	*/
 	if(pre == 0){
 		privatefprintf("--------- First argument pass -------\n\n");
 		while((c = getopt_long(argc, argv, shortopts_f, longoption, &index)) != EOF){
@@ -203,10 +201,10 @@ static int private_readargument(int argc, const char** argv, int pre){
 				break;
 			case 'I':
 				use_stdin_as_buffer = 1;
-				privatefprintf("Stdin used as input buffer for glsl shader.\n");
 				if(optarg){
 					stdin_buffer_size = atoi(optarg);
 				}
+				privatefprintf("Stdin used as input buffer for glsl shader with read size %d.\n", stdin_buffer_size);
 				break;
 			case 'f':
 				if(optarg){
@@ -315,7 +313,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 					exit(EXIT_FAILURE);
 				}
 
-				privatefprintf("Added %s directory to inotify watch.\n", buf);
+				privatefprintf("Added %s directory to inotify watch.\n\n", buf);
 				inotifybuf = malloc(4096);
 			case 't':
 				if(optarg){
@@ -347,6 +345,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 							height = FreeImage_GetHeight(bitmap);
 							bpp = FreeImage_GetBPP(bitmap);
 
+
 							switch(colortype){
 							case FIC_RGB:
 								gformat = GL_RGB;
@@ -363,6 +362,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 							/**/
 							ExCreateTexture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
 									height, 0, gformat, GL_UNSIGNED_BYTE, FreeImage_GetBits(bitmap));
+
 							nextTex++;
 							privatefprintf("width : %d\nheight : %d\n\n", width, height);
 
@@ -409,6 +409,7 @@ typedef struct uniform_location_t{
 	unsigned int tex5;			/*	texture 5.	*/
 	unsigned int tex6;			/*	texture 6.	*/
 	unsigned int tex7;			/*	texture 7.	*/
+
 }UniformLocation;
 
 
@@ -445,6 +446,7 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	res[1] = height;
 	glUniform2fv(uniform->resolution, 1, &res[0]);
 
+
 	privatefprintf("----------- Assigning texture sampler index ----------\n");
 	glUniform1i(uniform->tex0, numTextures - 8);
 	glUniform1i(uniform->tex1, numTextures - 7);
@@ -457,13 +459,16 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	glUniform1i(uniform->backbuffer, numTextures);
 
 
-
-
 	/*	Create backbuffer.	*/
 	if(uniform->backbuffer != -1){
 		unsigned int ftextype = GL_FLOAT;
 		unsigned int ftexinternalformat = GL_RGBA;
+		if(ExIsTexture(&ftex)){
+			ExDeleteTexture(&ftex);
+		}
+
 		ExCreateTexture(&ftex, GL_TEXTURE_2D,  0, ftexinternalformat, width, height, 0, GL_RGB, ftextype, NULL);
+
 	}else{
 		if(ExIsTexture(&ftex)){
 			ExDeleteTexture(&ftex);
@@ -471,11 +476,20 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	}
 }
 
-void resize_screen(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader){
+void resize_screen(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture){
 	float resolution[2] = {event->size.width, event->size.height};
 	glViewport(0, 0, event->size.width, event->size.height);
 	glUniform2fv(uniform->resolution, 1, &resolution[0]);
 	privatefprintf("%dx%d.\n", event->size.width, event->size.height);
+	if(ftexture){
+		unsigned int ftextype = GL_FLOAT;
+		unsigned int ftexinternalformat = GL_RGBA;
+		if(ExIsTexture(&ftex)){
+			ExDeleteTexture(&ftex);
+		}
+
+		ExCreateTexture(&ftex, GL_TEXTURE_2D,  0, ftexinternalformat, event->size.width, event->size.height, 0, GL_RGB, ftextype, NULL);
+	}
 }
 
 void displaygraphic(ExWin drawable){
@@ -518,6 +532,7 @@ int main(int argc, const char** argv){
 
 	/**/
 	long int pretime;
+	long int deltatime;
 	float time;
 
 	/**/
@@ -532,14 +547,15 @@ int main(int argc, const char** argv){
 		return EXIT_FAILURE;
 	}
 
-	printf("\n");
-	printf("glslview v%d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
-	printf("==================\n\n");
-
 	/*	*/
 	if(private_readargument(argc, argv, 0) == 2){
 		return EXIT_SUCCESS;
 	}
+
+	/**/
+	printf("\n");
+	printf("glslview v%d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
+	printf("==================\n\n");
 
 	/*	Initialize ELT.	*/
 	privatefprintf("ELT version %s\n", ExGetVersion());
@@ -631,25 +647,25 @@ int main(int argc, const char** argv){
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, NULL );
 
-	/**/
+	/*	*/
 	glBindVertexArray(0);
 
-	/**/
+	/*	*/
 	drawable = ExGetCurrentGLDrawable();
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
 	glDepthMask(FALSE);
 
-	/**/
+	/*	*/
 	ExGetWindowSizev(window, &size);
 	glViewport(0, 0, size.width, size.height);
 
-	/**/
+	/*	*/
 	glUseProgram(shader.program);
 	glBindVertexArray(vao);
 
-	/*	bind all textures.	*/
+	/*	Bind all textures.	*/
 	for(x = 0; x < numTextures; x++){
 		if(ExIsTexture(&textures[x])){
 			privatefprintf("Binding texture %d.\n", x);
@@ -708,18 +724,18 @@ int main(int argc, const char** argv){
 
 			/**/
 			if(event.event & EX_EVENT_MOUSE_MOTION){
-				float mouse[2] = {event.motion.x / screen[0], event.motion.y / screen[1]};
+				float mouse[2] = {event.motion.x , -event.motion.y };
 				glUniform2fv(uniform.mouse, 1, &mouse[0]);
 			}
 
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
-				resize_screen(&event, &uniform, &shader);
+				resize_screen(&event, &uniform, &shader, &ftex);
 				screen[0] = event.size.width;
 				screen[1] = event.size.height;
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
-				resize_screen(&event, &uniform, &shader);
+				resize_screen(&event, &uniform, &shader, &ftex);
 				screen[0] = event.size.width;
 				screen[1] = event.size.height;
 			}
@@ -751,18 +767,25 @@ int main(int argc, const char** argv){
 			ret = select(FD_SETSIZE, &readfd, NULL, NULL, &timeval);
 
 			if(ret < 0){
-				privatefprintf("select failed: %s\n", strerror(errno));
+				privatefprintf("Select failed: %s\n", strerror(errno));
 			}
 			else if(ret == 0){
 
-				float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
-				glUniform1fv(uniform.time,  1, &time);
+				if(uniform.time != -1){
+					float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
+					glUniform1fv(uniform.time,  1, &time);
+				}
+				deltatime = ExGetHiResTime() - pretime;
+				pretime = ExGetHiResTime();
+				if(uniform.deltatime != -1){
+					glUniform1f(uniform.deltatime, (float)((float)deltatime / (float)1E9));
+				}
 
-				/**/
+				/*	*/
 				if(use_stdin_as_buffer){
 					int buffer;
 					if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
-						glUniform1iv(uniform.stdin, 4, (const GLint*)&buffer);
+						glUniform1iv(uniform.stdin, sizeof(GLint), (const GLint*)&buffer);
 					}
 				}
 
@@ -783,11 +806,11 @@ int main(int argc, const char** argv){
 				int nbytes;
 				/**/
 				while( (nbytes = read(ifd, &ionevent, EVENT_BUF_LEN)) > 0){
-					privatefprintf("inotify fetching.\n");
+					privatefprintf("inotify event fetching.\n");
 					read(ifd, &buffer, ionevent.len);
 
 					if(ionevent.mask & IN_MODIFY){
-						ExSize wsize;
+
 						if(strcmp(ionevent.name, fragPath) == 0){
 							privatefprintf("Updating %s\n", ionevent.name);
 
@@ -800,9 +823,9 @@ int main(int argc, const char** argv){
 							}
 							free(fragData);
 
-							ExGetWindowSizev(window, &wsize);
+							ExGetWindowSizev(window, &size);
 							glUseProgram(shader.program);
-							update_shader_uniform(&uniform, &shader, wsize.width, wsize.height);
+							update_shader_uniform(&uniform, &shader, size.width, size.height);
 
 						}
 					}
