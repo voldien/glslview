@@ -34,7 +34,23 @@
 #define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
 #include<FreeImage.h>
+
+
+/*	for version 2.0, 3D objects with hpm for high performance matrices operators.*/
 //#include<hpm/hpm.h>
+//#include<assimp/cimport.h>
+
+
+#ifndef GLSLVIEW_MAJOR_VERSION
+	#define GLSLVIEW_MAJOR_VERSION	0
+#endif	/*	GLSLVIEW_MAJOR_VERSION	*/
+#ifndef GLSLVIEW_MINOR_VERSION
+	#define GLSLVIEW_MINOR_VERSION	5
+#endif	/*	GLSLVIEW_MINOR_VERSION	*/
+#ifndef GLSLVIEW_REVISION_VERSION
+	#define GLSLVIEW_REVISION_VERSION 0
+#endif	/*	GLSLVIEW_REVISION_VERSION	*/
+
 
 /*	default vertex shader.	*/
 const char* vertex = ""
@@ -72,17 +88,6 @@ unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
 
-#ifndef GLSLVIEW_MAJOR_VERSION
-	#define GLSLVIEW_MAJOR_VERSION	0
-#endif
-#ifndef GLSLVIEW_MINOR_VERSION
-	#define GLSLVIEW_MINOR_VERSION	5
-#endif
-#ifndef GLSLVIEW_REVISION_VERSION
-	#define GLSLVIEW_REVISION_VERSION 0
-#endif
-
-
 /**/
 static int privatefprintf(const char* format,...){
 	va_list larg;
@@ -104,16 +109,18 @@ static int private_readargument(int argc, const char** argv, int pre){
 	static const struct option longoption[] = {
 			{"version", 		no_argument, NULL, 'v'},				/*	application version.	*/
 			{"alpha", 			no_argument, NULL, 'a'},				/*	use alpha channel.	*/
-			{"wallpaper", 		no_argument, NULL, 'w'},				/*	use as wallpaper.	*/
+
 			{"fullscreen", 		no_argument, NULL, 'F'},				/*	use in fullscreen.	*/
-			{"vsync", 			no_argument, NULL, 's'},				/*	enable vsync.	*/
 			{"notify-file", 	no_argument, NULL, 'n'},				/*	enable inotify notification.	*/
 			{"srgb",			no_argument, NULL, 'S'},				/*	sRGB.	*/
+			{"Verbose", 		no_argument, NULL, 'V'},				/*	Verbose.	*/
+			{"wallpaper", 		optional_argument, NULL, 'w'},			/*	use as wallpaper.	*/
+			{"vsync", 			optional_argument, NULL, 's'},			/*	enable vsync.	*/
 			{"stdin",			optional_argument, NULL, 'I'},			/*	stdin data as buffer.	*/
-			{"Verbose", 		optional_argument, NULL, 'V'},			/*	Verbose.	*/
 			{"no-decoration", 	optional_argument, NULL, 'D'},			/*	*/
 			{"debug", 			optional_argument, NULL, 'd'},			/*	Set application in debug mode.	*/
 			{"antialiasing", 	optional_argument, NULL, 'A'},			/*	anti aliasing.	*/
+			{"texture-compression",optional_argument, NULL, 'C'},		/*	Texture compression.	*/
 			{"file", 			required_argument, NULL, 'f'},			/*	glsl shader file.	*/
 			{"opengl", 			required_argument, NULL, 'g'},			/*	Opengl version.	*/
 			{"renderer", 		required_argument, NULL, 'r'},			/*	Renderer API.	*/
@@ -122,19 +129,19 @@ static int private_readargument(int argc, const char** argv, int pre){
 			{"poly",			required_argument, NULL, 'p'},			/*	Polygon.	*/
 			{"opencl",			required_argument, NULL, 'c'},			/*	Opencl.	*/
 
+
 			{NULL, NULL, NULL, NULL}
 	};
 
 	int c;
 	int index;
 	int status = 1;
-	const char* shortopts_f = "Ivhs:ar:wg:Vf:SA:";		/**/
-	const char* shortopts_s = "t:vhs:Fwsn:" ;			/**/
+	const char* shortopts_f = "Ihsar:g:Vf:SA:t:vFwnp:";		/**/
 
 	/*	*/
 	if(pre == 0){
 		privatefprintf("--------- First argument pass -------\n\n");
-		while((c = getopt_long(argc, argv, shortopts_f, longoption, &index)) != EOF){
+		while((c = getopt_long(argc, (char *const *)argv, shortopts_f, longoption, &index)) != EOF){
 			switch(c){
 			case 'v':{
 				printf("Version %d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
@@ -226,7 +233,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 	}else if(pre == 1){
 		privatefprintf("--------- Second argument pass -------\n\n");
 
-		while((c = getopt_long(argc, argv, shortopts_s, longoption, &index)) != EOF){
+		while((c = getopt_long(argc, (char *const *)argv, shortopts_f, longoption, &index)) != EOF){
 			switch(c){
 			case 'A':
 				if(optarg){
@@ -284,10 +291,15 @@ static int private_readargument(int argc, const char** argv, int pre){
 			case 'w':{	/*	Set as desktop wallpaper.	*/	/*	TODO fix for other distro other than Ubuntu.*/
 				ExSize size;
 				ExGetWindowSizev(ExGetDesktopWindow(), &size);
+				privatefprintf("Set as wallpaper %dx%d.\n", size.width, size.height);
+
+				ExSetWindowParent(ExGetDesktopWindow(), window);
+				if(optarg){
+
+				}
+
 				ExSetWindowSize(window, size.width, size.height);
 				ExSetWindowPos(window, 0, 0);
-				privatefprintf("Set as wallpaper %dx%d.\n", size.width, size.height);
-				ExSetWindowParent(ExGetDesktopWindow(), window);
 
 				/*ExSetWindowFlag(window, ExGetWindowFlag(window));	*/
 			}break;
@@ -345,7 +357,6 @@ static int private_readargument(int argc, const char** argv, int pre){
 							height = FreeImage_GetHeight(bitmap);
 							bpp = FreeImage_GetBPP(bitmap);
 
-
 							switch(colortype){
 							case FIC_RGB:
 								gformat = GL_RGB;
@@ -386,6 +397,7 @@ static int private_readargument(int argc, const char** argv, int pre){
 	opterr = 0;
 	optind = 0;
 	optopt = 0;
+	//optarg = NULL;
 
 	return status;
 }
@@ -423,6 +435,10 @@ void catchSig(int signal){
 }
 
 
+/**
+ *
+ *
+ */
 void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader, int width, int height){
 	privatefprintf("----------- fetching uniforms index location ----------\n");
 	uniform->time = glGetUniformLocation(shader->program, "time");
@@ -476,6 +492,10 @@ void update_shader_uniform(struct uniform_location_t* uniform, ExShader* shader,
 	}
 }
 
+/**
+ *
+ *
+ */
 void resize_screen(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture){
 	float resolution[2] = {event->size.width, event->size.height};
 	glViewport(0, 0, event->size.width, event->size.height);
@@ -724,7 +744,9 @@ int main(int argc, const char** argv){
 
 			/**/
 			if(event.event & EX_EVENT_MOUSE_MOTION){
-				float mouse[2] = {event.motion.x , -event.motion.y };
+				ExPoint location;
+				ExGetGlobalMouseState(&location.x, &location.y);
+				float mouse[2] = {location.x , -location.y };
 				glUniform2fv(uniform.mouse, 1, &mouse[0]);
 			}
 
@@ -865,7 +887,9 @@ int main(int argc, const char** argv){
 
 	privatefprintf("glslview is terminating.\n");
 
-	/**/
+
+
+	/*	Release OpenGL resources.	*/
 	if(ExGetCurrentOpenGLContext()){
 		if(glIsProgram(shader.program) == GL_TRUE){
 			ExDeleteShaderProgram(&shader);
@@ -877,6 +901,7 @@ int main(int argc, const char** argv){
 			glDeleteBuffers(1, &vbo);
 		}
 
+		/*	textures.	*/
 		for(x = 0; x < numTextures; x++){
 			if(ExIsTexture(&textures[x])){
 				ExDeleteTexture(&textures[x]);
@@ -893,9 +918,12 @@ int main(int argc, const char** argv){
 		ExDestroyWindow(window);
 	}
 
-	free(inotifybuf);
-	inotify_rm_watch(ifd, wd);
-	close(ifd);
+	/*	*/
+	if(ifd != -1){
+		inotify_rm_watch(ifd, wd);
+		free(inotifybuf);
+		close(ifd);
+	}
 	ExQuit();
 	return status;
 }
