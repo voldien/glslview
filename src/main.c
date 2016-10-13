@@ -41,6 +41,7 @@
  */
 #include<hpm/hpm.h>
 #include<assimp/cimport.h>
+#include<assimp/scene.h>
 
 
 void initmatrix(void){
@@ -57,6 +58,31 @@ void initmatrix(void){
 	}
 	else{
 		hpm_init(HPM_NOSIMD);
+	}
+
+}
+
+void loadpolygone(const char* cfilename){
+	struct aiScene* scene;
+	struct aiMesh* mesh;
+	unsigned int totalVerticesCount = 0;
+	unsigned int totalIndicesCount = 0;
+	int x;
+	int y;
+	scene = aiImportFile(cfilename, 0);
+
+	for(x = 0; scene->mNumMeshes; x++){
+		mesh = scene->mMeshes[x];
+		totalVerticesCount += mesh->mNumVertices;
+		totalIndicesCount += mesh->mNumFaces;
+	}
+
+
+	for(x = 0; scene->mNumMeshes; x++){
+		mesh = scene->mMeshes[x];
+		for(y = 0; y < mesh->mNumVertices; y++){
+			mesh->mVertices[y];
+		}
 	}
 
 }
