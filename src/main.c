@@ -36,12 +36,13 @@
 #include<FreeImage.h>
 
 
+
 /*	for version 2.0, 3D objects with hpm for high performance matrices operators.
  *	and assimp for extracting geometrices;
  */
 //#include<hpm/hpm.h>
 //#include<assimp/cimport.h>
-
+#include<CL/cl.h>
 
 #ifndef GLSLVIEW_MAJOR_VERSION
 	#define GLSLVIEW_MAJOR_VERSION	0
@@ -92,6 +93,7 @@ int wd = -1;									/*	inotify watch directory.	*/
 char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
+char* clfrag = NULL;
 unsigned int fbo = 0;							/*	*/
 unsigned int ftextype = GL_FLOAT;
 unsigned int ftexinternalformat = GL_RGBA;
@@ -102,6 +104,7 @@ const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
+unsigned int usingopencl = 0;
 
 typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 pswapbufferfunctype pswapbuffer;					/*	Function pointer for swap default framebuffer.	*/
@@ -300,6 +303,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 				}
 				break;
 			case 'c':	/*	TODO create opencl context.	*/
+				usingopencl = 1;
 				break;
 			case '\?':
 			case ':':
@@ -639,9 +643,68 @@ void glslview_terminate(void){
 
 
 
+ExOpenCLContext createCLContext(ExOpenGLContext shared, ExCLDeviceID* id){
+	ExOpenCLContext context;
+	ExCLCommandQueue queue;
+	if(shared == NULL){
+		privatefprintf("");
+		return NULL;
+	}
+
+	context = ExCreateCLSharedContext(shared, 0);
+	if(context == NULL){
+
+	}
+	id = ExGetContextDevices(context, &id, NULL);
+	queue = ExCreateCommandQueue(context, id);
+	return context;
+}
+
+ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char* cfilename){
+	ExCLProgram program;
+	ExCLKernel kernel;
+	ExCLMem texmem;
+	cl_int error;
+	int x;
+	const int kerneltexindex = 3;
+	program = ExCreateProgram(context, id, cfilename);
+	kernel = ExCreateKernel(program, "main");
+
+	unsigned int image;
+	unsigned int width;
+	unsigned int height;
+
+	ExSetCLArg(kernel, 0, sizeof(unsigned int), &image);
+	ExSetCLArg(kernel, 1, sizeof(unsigned int), &width);
+	ExSetCLArg(kernel, 2, sizeof(unsigned int), &height);
+	for(x = 0; x < 16; x++){
+		if(ExIsTexture( &textures[x].texture)){
+			texmem = clCreateFromGLTexture((cl_context)context,
+					CL_MEM_READ_ONLY,
+					textures[x].target,
+					0,
+					textures[x].texture,
+					&error);
+			ExSetCLArg(kernel, kerneltexindex * x + 0, sizeof(ExCLMem), &texmem);
+			ExSetCLArg(kernel, kerneltexindex * x + 1, sizeof(unsigned int), &textures[x].width);
+			ExSetCLArg(kernel, kerneltexindex * x + 2, sizeof(unsigned int), &textures[x].height);
+
+		}else{
+			break;
+		}
+	}
+
+	return program;
+}
+
+
+
 
 int main(int argc, const char** argv){
 	ERESULT status = EXIT_SUCCESS;				/*	*/
+	ExOpenGLContext glc;
+	ExOpenCLContext clc;
+	ExCLDeviceID deviceid;
 
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
@@ -718,6 +781,11 @@ int main(int argc, const char** argv){
 		status = EXIT_FAILURE;
 		goto error;
 	}
+	glc = ExGetCurrentOpenGLContext();
+	assert(glc);
+	if(usingopencl){
+		clc = createCLContext(glc, &deviceid);
+	}
 
 	/*	*/
 	ExShowWindow(window);
@@ -778,8 +846,9 @@ int main(int argc, const char** argv){
 	}
 
 
-
-
+	if(usingopencl){
+		createCLProgram(clc, deviceid, clfrag);
+	}
 
 
 
