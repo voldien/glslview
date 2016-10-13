@@ -39,8 +39,27 @@
 /*	for version 2.0, 3D objects with hpm for high performance matrices operators.
  *	and assimp for extracting geometrices;
  */
-//#include<hpm/hpm.h>
-//#include<assimp/cimport.h>
+#include<hpm/hpm.h>
+#include<assimp/cimport.h>
+
+
+void initmatrix(void){
+
+	if(hpm_supportcpufeat(HPM_AVX2)){
+		hpm_init(HPM_AVX2);
+	}
+	if(hpm_supportcpufeat(HPM_AVX)){
+		hpm_init(HPM_AVX);
+	}
+
+	if(hpm_supportcpufeat(HPM_SSE2)){
+		hpm_init(HPM_SSE2);
+	}
+	else{
+		hpm_init(HPM_NOSIMD);
+	}
+
+}
 
 
 #ifndef GLSLVIEW_MAJOR_VERSION
