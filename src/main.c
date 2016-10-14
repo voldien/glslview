@@ -42,6 +42,7 @@
 #include<hpm/hpm.h>
 #include<assimp/cimport.h>
 #include<assimp/scene.h>
+#include<assimp/postprocess.h>
 
 
 void initmatrix(void){
@@ -65,26 +66,86 @@ void initmatrix(void){
 void loadpolygone(const char* cfilename){
 	struct aiScene* scene;
 	struct aiMesh* mesh;
+
+	float* vertex;
+	unsigned int* indices;
+
+	unsigned int vao;
+	unsigned int vbo;
+	unsigned int ibo;
+
 	unsigned int totalVerticesCount = 0;
 	unsigned int totalIndicesCount = 0;
+	unsigned int offsetVertices = 0;
+	unsigned int offsetIndices = 0;
+	unsigned int stride;
+
 	int x;
 	int y;
-	scene = aiImportFile(cfilename, 0);
+	scene = aiImportFile(cfilename, aiProcess_Triangulate |
+									aiProcess_GenSmoothNormals |
+									aiProcess_CalcTangentSpace);
 
+
+	/*	*/
 	for(x = 0; scene->mNumMeshes; x++){
 		mesh = scene->mMeshes[x];
 		totalVerticesCount += mesh->mNumVertices;
 		totalIndicesCount += mesh->mNumFaces;
 	}
+	totalIndicesCount *= 3;
+
+
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void*)0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void*)12);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (const void*)20);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (const void*)32);
+
+	glGenBuffers(1, &vbo);
+	glGenBuffers(1, &ibo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+	glBufferData(GL_ARRAY_BUFFER, totalVerticesCount * stride, NULL, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, totalIndicesCount, NULL, GL_STATIC_DRAW);
+
+
+	vertex = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	indices = (float*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
 
 
 	for(x = 0; scene->mNumMeshes; x++){
 		mesh = scene->mMeshes[x];
 		for(y = 0; y < mesh->mNumVertices; y++){
 			mesh->mVertices[y];
+			mesh->mTextureCoords[0][y];
+			mesh->mNormals[y];
+			mesh->mTangents[y];
 		}
+
+		offsetVertices += mesh->mNumVertices;
+		offsetIndices += mesh->mNumFaces;
 	}
 
+
+
+
+	glUnMapBuffer(GL_ARRAY_BUFFER);
+	glUnMapBuffer(GL_ELEMENT_ARRAY_BUFFER);
+
+
+	glBindVertexArray(0);
+
+	/*	*/
+	aiReleaseImport(scene);
 }
 
 
@@ -108,6 +169,27 @@ const char* vertex = ""
 "layout(location = 0) in vec3 vertex;\n"
 "void main(void){\n"
 "gl_Position = vec4(vertex,1.0);\n"
+"}\n";
+
+
+const char* vertexpolygone = ""
+"#version 330 core\n"
+"layout(location = 0) in vec3 vertex;\n"
+"layout(location = 1) in vec2 texturecoord;\n"
+"layout(location = 2) in vec3 normal;\n"
+"layout(location = 3) in vec3 tangent;\n"
+"uniform mat4 mvp;\n"
+"uniform mat4 model;\n"
+"smooth out vec3 mvertex;\n"
+"smooth out vec2 muv;\n"
+"smooth out vec3 mnormal;\n"
+"smooth out vec3 mtangent;\n"
+"void main(void){\n"
+"gl_Position = mvp * vec4(vertex,1.0);\n"
+"mvertex = (mvp * vec4(vertex,1.0)).xyz;\n"
+"muv = texturecoord;\n"
+"mnormal = (model * vec4(normal,0.0)).xyz;\n"
+"mtangent = (model * vec4(tangent,0.0)).xyz;\n"
 "}\n";
 
 
