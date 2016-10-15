@@ -795,7 +795,7 @@ int main(int argc, const char** argv){
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, NULL );
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
 
 	/*	*/
 	glBindVertexArray(0);
