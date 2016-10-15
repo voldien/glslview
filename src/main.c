@@ -45,6 +45,10 @@
 #include<assimp/postprocess.h>
 
 
+extern int privatefprintf(const char* format,...);
+extern int debugprintf(const char* format,...);
+
+
 /*	only needs to be called once if in polygone mode.	*/
 void initmatrix(void){
 
@@ -54,7 +58,6 @@ void initmatrix(void){
 	if(hpm_supportcpufeat(HPM_AVX)){
 		hpm_init(HPM_AVX);
 	}
-
 	if(hpm_supportcpufeat(HPM_SSE2)){
 		hpm_init(HPM_SSE2);
 	}
@@ -65,8 +68,10 @@ void initmatrix(void){
 }
 
 void loadpolygone(const char* cfilename){
-	struct aiScene* scene;
+	const struct aiScene* scene;
 	struct aiMesh* mesh;
+
+	void* passimplib;	/*	for loading assimp library in runetime.	*/
 
 	float* vertex;
 	unsigned int* indices;
@@ -81,24 +86,37 @@ void loadpolygone(const char* cfilename){
 	unsigned int offsetIndices = 0;
 	unsigned int stride;
 	unsigned int nfloats;
+	unsigned int verticebuffersize;
+	unsigned int indicesbuffersize;
 
 	int x;
 	int y;
 	int z;
-	scene = aiImportFile(cfilename, aiProcess_Triangulate |
+	scene = aiImportFile(cfilename, aiProcessPreset_TargetRealtime_Quality/*aiProcess_Triangulate |
 									aiProcess_GenSmoothNormals |
-									aiProcess_CalcTangentSpace);
+									aiProcess_CalcTangentSpace*/);
 
+	if(scene == NULL){
+		fprintf(stderr, aiGetErrorString());
+		return;
+	}
 
 	/*	*/
-	for(x = 0; scene->mNumMeshes; x++){
+
+	privatefprintf("Mesh count %d\n", scene->mNumMeshes);
+	for(x = 0; x < scene->mNumMeshes; x++){
 		mesh = scene->mMeshes[x];
-		totalVerticesCount += mesh->mNumVertices;
-		totalIndicesCount += mesh->mNumFaces;
+		if(mesh){
+			totalVerticesCount += mesh->mNumVertices;
+			totalIndicesCount += mesh->mNumFaces;
+		}
 	}
 	totalIndicesCount *= 3;
 	nfloats = (3 + 2 + 3 + 3);
 	stride = nfloats * sizeof(float);
+	privatefprintf("Total vertices count %d\n", totalVerticesCount);
+	privatefprintf("Total indices count %d\n", totalIndicesCount);
+	privatefprintf("Stride value %d\n", stride);
 
 
 	glGenVertexArrays(1, &vao);
@@ -120,16 +138,25 @@ void loadpolygone(const char* cfilename){
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
-	glBufferData(GL_ARRAY_BUFFER, totalVerticesCount * stride, NULL, GL_STATIC_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, totalIndicesCount, NULL, GL_STATIC_DRAW);
+	verticebuffersize = totalVerticesCount * stride;
+	indicesbuffersize = totalIndicesCount * sizeof(unsigned int);
+	debugprintf("Allocating %d bytes for vertex buffer.\n", verticebuffersize);
+	debugprintf("Allocating %d bytes for indices buffer.\n", indicesbuffersize);
+	debugprintf("Process mesh %s.\n", mesh->mName.data);
+	glBufferData(GL_ARRAY_BUFFER, verticebuffersize, NULL, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesbuffersize, NULL, GL_STATIC_DRAW);
 
 
 	vertex = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	indices = (float*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+	indices = (unsigned int*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
 
+	assert(vertex);
+	assert(indices);
 
-	for(x = 0; scene->mNumMeshes; x++){
+	for(x = 0; x < scene->mNumMeshes; x++){
 		mesh = scene->mMeshes[x];
+		debugprintf("Process mesh %s.\n", mesh->mName.data);
+
 		for(y = 0; y < mesh->mNumVertices; y++){
 			memcpy(&vertex[offsetVertices + y * stride + 0], &mesh->mVertices[y], sizeof(struct aiVector3D));
 			memcpy(&vertex[offsetVertices + y * stride + 3], &mesh->mTextureCoords[0][y], sizeof(struct aiVector2D));
@@ -139,20 +166,18 @@ void loadpolygone(const char* cfilename){
 
 		for(z = 0; z < mesh->mNumFaces; z++){
 			struct aiFace* face = &mesh->mFaces[z];
-			face->mIndices[0] += offsetVertices;
-			face->mIndices[1] += offsetVertices;
-			face->mIndices[2] += offsetVertices;
+			GLuint f0 = face->mIndices[0] + offsetVertices;
+			GLuint f1 = face->mIndices[1] + offsetVertices;
+			GLuint f2 = face->mIndices[2] + offsetVertices;
 			assert(face->mNumIndices == 3);		// Check if Indices Count is 3 other case error
-			memcpy(&indices[(offsetIndices) + 3 * z + 0], &face->mIndices[0], sizeof(GLuint));
-			memcpy(&indices[(offsetIndices) + 3 * z + 1], &face->mIndices[1], sizeof(GLuint));
-			memcpy(&indices[(offsetIndices) + 3 * z + 2], &face->mIndices[2], sizeof(GLuint));
+			memcpy(&indices[(offsetIndices) + 3 * z + 0], &f0, sizeof(GLuint));
+			memcpy(&indices[(offsetIndices) + 3 * z + 1], &f1, sizeof(GLuint));
+			memcpy(&indices[(offsetIndices) + 3 * z + 2], &f2, sizeof(GLuint));
 		}
 
 		offsetVertices += mesh->mNumVertices;
-		offsetIndices += mesh->mNumFaces;
+		offsetIndices += mesh->mNumFaces * 3;
 	}
-
-
 
 
 	glUnmapBuffer(GL_ARRAY_BUFFER);
@@ -162,6 +187,7 @@ void loadpolygone(const char* cfilename){
 	glBindVertexArray(0);
 
 	/*	*/
+	debugprintf("Releasing assimp scene data.\n");
 	aiReleaseImport(scene);
 }
 
@@ -256,7 +282,7 @@ pswapbufferfunctype pswapbuffer;					/*	Function pointer for swap default frameb
 
 
 /**/
-static int privatefprintf(const char* format,...){
+int privatefprintf(const char* format,...){
 	va_list larg;
 	int status;
 
@@ -271,7 +297,7 @@ static int privatefprintf(const char* format,...){
 	return status;
 }
 
-static int debugprintf(const char* format,...){
+int debugprintf(const char* format,...){
 	va_list larg;
 	int status;
 
@@ -447,8 +473,10 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			case 'c':	/*	TODO create opencl context.	*/
 				break;
 			case 'p':
-				usepolygone = 1;
-				initmatrix();
+				if(optarg){
+					usepolygone = 1;
+					initmatrix();
+				}
 				break;
 			case '\?':
 			case ':':
@@ -553,7 +581,10 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 				inotifybuf = malloc(4096);
 				break;
 			case 'p':
-				loadpolygone(optarg);
+				if(optarg){
+					privatefprintf("Attempting to load polygone model %s.\n", optarg);
+					loadpolygone(optarg);
+				}
 				break;
 			case 't':
 				if(optarg){
