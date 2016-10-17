@@ -67,7 +67,20 @@ void initmatrix(void){
 
 }
 
-void loadpolygone(const char* cfilename){
+typedef struct mesh_object_t{
+	unsigned int vbo;
+	unsigned int ibo;
+	unsigned int vao;
+	union{
+		struct{
+			hpmvec3f center;
+			hpmvec3f size;
+		};
+		hpmvec3f aabb[2];
+	};
+}Mesh;
+
+void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	const struct aiScene* scene;
 	struct aiMesh* mesh;
 
@@ -88,6 +101,9 @@ void loadpolygone(const char* cfilename){
 	unsigned int nfloats;
 	unsigned int verticebuffersize;
 	unsigned int indicesbuffersize;
+	unsigned int nvertexfloats = 0;
+	hpmvec3f max = {0};
+	hpmvec3f min = {0};
 
 	int x;
 	int y;
@@ -158,10 +174,10 @@ void loadpolygone(const char* cfilename){
 		debugprintf("Process mesh %s.\n", mesh->mName.data);
 
 		for(y = 0; y < mesh->mNumVertices; y++){
-			memcpy(&vertex[offsetVertices + y * stride + 0], &mesh->mVertices[y], sizeof(struct aiVector3D));
-			memcpy(&vertex[offsetVertices + y * stride + 3], &mesh->mTextureCoords[0][y], sizeof(struct aiVector2D));
-			memcpy(&vertex[offsetVertices + y * stride + 5], &mesh->mNormals[y], sizeof(struct aiVector3D));
-			memcpy(&vertex[offsetVertices + y * stride + 8], &mesh->mTangents[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * stride + 0], &mesh->mVertices[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * stride + 3], &mesh->mTextureCoords[0][y], sizeof(struct aiVector2D));
+			memcpy(&vertex[nvertexfloats + y * stride + 5], &mesh->mNormals[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * stride + 8], &mesh->mTangents[y], sizeof(struct aiVector3D));
 		}
 
 		for(z = 0; z < mesh->mNumFaces; z++){
@@ -177,6 +193,7 @@ void loadpolygone(const char* cfilename){
 
 		offsetVertices += mesh->mNumVertices;
 		offsetIndices += mesh->mNumFaces * 3;
+		nvertexfloats += mesh->mNumVertices * nfloats;
 	}
 
 
@@ -262,6 +279,8 @@ int wd = -1;									/*	inotify watch directory.	*/
 char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
+unsigned int numgeoPaths = 0;					/*	num.	*/
+char* geoPath[32] = {NULL};						/*	Path of geometry shader.	*/
 unsigned int fbo = 0;							/*	*/
 unsigned int ftextype = GL_FLOAT;
 unsigned int ftexinternalformat = GL_RGBA;
@@ -273,7 +292,7 @@ unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 unsigned int usepolygone = 0;
-
+Mesh mesh;
 typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 pswapbufferfunctype pswapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
@@ -345,6 +364,10 @@ typedef struct uniform_location_t{
 	unsigned int tex13;			/*	texture 13.	*/
 	unsigned int tex14;			/*	texture 14.	*/
 	unsigned int tex15;			/*	texture 15.	*/
+	unsigned int mvp;			/*	model view projection matrix.	*/
+	unsigned int model;			/*	world space matrix.	*/
+	unsigned int perspective;	/*	perspective matrix.	*/
+	unsigned int view;			/*	camera space matrix.	*/
 }UniformLocation;
 
 /**/
@@ -363,8 +386,8 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			{"debug", 			optional_argument, NULL, 'd'},			/*	Set application in debug mode.	*/
 			{"antialiasing", 	optional_argument, NULL, 'A'},			/*	anti aliasing.	*/
 			{"compression",		optional_argument, NULL, 'C'},			/*	Texture compression.	*/
-			{"file", 			required_argument, NULL, 'f'},			/*	glsl shader file.	*/
-			{"geometyshader",	required_argument, NULL, 'f'},			/*	geometry glsl shader file.	*/
+			{"file", 			required_argument, NULL, 'f'},			/*	glsl fragment shader file.	*/
+			{"geometyshader",	required_argument, NULL, 'G'},			/*	geometry glsl shader file.	*/
 			{"opengl", 			required_argument, NULL, 'g'},			/*	Opengl version.	*/
 			{"renderer", 		required_argument, NULL, 'r'},			/*	Renderer API.	*/
 			{"resolution-scale",required_argument, NULL, 'R'},			/*	Texture scale resolution (required gl_framebuffer_object).*/
@@ -583,7 +606,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			case 'p':
 				if(optarg){
 					privatefprintf("Attempting to load polygone model %s.\n", optarg);
-					loadpolygone(optarg);
+					loadpolygone(optarg, &mesh);
 				}
 				break;
 			case 't':
@@ -733,6 +756,11 @@ void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, 
 	uniform->tex6 = glGetUniformLocation(shader->program, "tex6");
 	uniform->tex7 = glGetUniformLocation(shader->program, "tex7");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
+	uniform->mvp = glGetUniformLocation(shader->program, "mvp");
+	uniform->model = glGetUniformLocation(shader->program, "model");
+	uniform->view = glGetUniformLocation(shader->program, "view");
+	uniform->perspective = glGetUniformLocation(shader->program, "perspective");
+
 
 	debugprintf("time %d\n", uniform->time);
 	debugprintf("deltatime %d\n", uniform->deltatime);
@@ -844,6 +872,11 @@ int main(int argc, const char** argv){
 
 	unsigned int vao = 0;						/*	*/
 	unsigned int vbo = 0;						/*	*/
+	hpmvec4x4f_t model;							/*	world space matrix.	*/
+	hpmvec4x4f_t view;							/*	camera space matrix.	*/
+	hpmvec4x4f_t perspective;					/*	perspective matrix.	*/
+	hpmvec3f campos;							/*	camera position.	*/
+	hpmquatf camrotate;							/*	camera rotation as a quaternion.	*/
 
 	pswapbuffer = ExSwapBuffers;				/*	TODO resolve for EGL or GLX/WGL.	*/
 
@@ -1020,6 +1053,12 @@ int main(int argc, const char** argv){
 	pretime = ExGetHiResTime();
 
 
+	if(usepolygone){
+		hpm_mat4x4_identityfv(view);
+		hpm_mat4x4_identityfv(model);
+		hpm_mat4x4_projfv(perspective, HPM_RAD2DEG(90.0f), (float)size.width / (float)size.height, 0.15f, 1000.0f);
+	}
+
 
 	if(ifd > 0 ){
 		timeval.tv_sec = 0;
@@ -1071,6 +1110,9 @@ int main(int argc, const char** argv){
 
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
 				glslview_resize_screen(&event, &uniform, &shader, &fbackbuffertex);
+				if(usepolygone){
+
+				}
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
