@@ -792,6 +792,10 @@ void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, 
 	debugprintf("tex13 %d\n", uniform->tex13);
 	debugprintf("tex14 %d\n", uniform->tex14);
 	debugprintf("tex15 %d\n", uniform->tex15);
+	debugprintf("mvp %d\n", uniform->mvp);
+	debugprintf("model %d\n", uniform->model);
+	debugprintf("view %d\n", uniform->view);
+	debugprintf("perspective %d\n", uniform->perspective);
 	debugprintf("backbuffer %d\n", uniform->backbuffer);
 
 	glUseProgram(shader->program);
