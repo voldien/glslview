@@ -67,7 +67,7 @@ const char* vertex = ""
 
 
 /**/
-static const float quad[4][3] = {
+const float quad[4][3] = {
 		{-1.0f, -1.0f, 0.0f},
 		{-1.0f, 1.0f, 0.0f},
 		{ 1.0f, -1.0f, 0.0f},
@@ -621,6 +621,25 @@ void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, 
 			ExDeleteTexture(&fbackbuffertex);
 		}
 	}
+}
+
+
+void glslview_update_uniforms(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime){
+
+	if(uniform->time != -1){
+		glUniform1fv(uniform->time, 1, &ttime);
+	}
+	if(uniform->deltatime != -1){
+		glUniform1f(uniform->deltatime, (float)((float)deltatime / (float)1E9));
+	}
+
+	/*	*/
+	if(use_stdin_as_buffer){
+		int buffer;
+		if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
+			glUniform1iv(uniform->stdin, sizeof(GLint), (const GLint*)&buffer);
+		}
+	}
 
 }
 
@@ -675,6 +694,8 @@ int main(int argc, const char** argv){
 	unsigned int numShaderPass = 0;					/*	*/
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
+
+	float ttime;
 
 	ExSize size;								/*	*/
 	ExChar title[512];							/*	*/
@@ -970,28 +991,15 @@ int main(int argc, const char** argv){
 			else if(ret == 0){
 				if(visable || renderInBackground){
 					for(x = 0; x < numShaderPass; x++){
-						glUseProgram(shader[x].program);
 
-						if(uniform[x].time != -1){
-							float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
-							glUniform1fv(uniform[x].time,  1, &time);
-						}
+						ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
 						deltatime = ExGetHiResTime() - pretime;
 						pretime = ExGetHiResTime();
-						if(uniform[x].deltatime != -1){
-							glUniform1f(uniform[x].deltatime, (float)((float)deltatime / (float)1E9));
-						}
 
-						/*	*/
-						if(use_stdin_as_buffer){
-							int buffer;
-							if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
-								glUniform1iv(uniform[x].stdin, sizeof(GLint), (const GLint*)&buffer);
-							}
-						}
+						glUseProgram(shader[x].program);
 
-
-							glslview_displaygraphic(drawable);
+						glslview_update_uniforms(&shader[x], &uniform[x], ttime, deltatime);
+						glslview_displaygraphic(drawable);
 
 						if(uniform[x].backbuffer != -1){
 							glActiveTexture(GL_TEXTURE0 + numTextures);
@@ -1051,31 +1059,28 @@ int main(int argc, const char** argv){
 
 			if(visable || renderInBackground){
 				for(x = 0; x < numShaderPass; x++){
-					float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
-					glUniform1fv(uniform[x].time,  1, &time);
-					/**/
-					if(use_stdin_as_buffer){
-						int buffer;
-						if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
-							glUniform1iv(uniform[x].stdin, 4, (const GLint*)&buffer);
-						}
-					}
 
+					ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
+					deltatime = ExGetHiResTime() - pretime;
+					pretime = ExGetHiResTime();
+
+					glUseProgram(shader[x].program);
+
+					glslview_update_uniforms(&shader[x], &uniform[x], ttime, deltatime);
 					glslview_displaygraphic(drawable);
 
-					/*	*/
 					if(uniform[x].backbuffer != -1){
 						glActiveTexture(GL_TEXTURE0 + numTextures);
 						glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
 						glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
 					}
+				}
 
-					glClear(GL_COLOR_BUFFER_BIT);
+				glClear(GL_COLOR_BUFFER_BIT);
+			}/*	render passes	*/
 
-				}/*	render passes	*/
 
-			}/*	render condition.	*/
-		}
+		}/*	render condition.	*/
 
 	}/*	End of main while loop.	*/
 

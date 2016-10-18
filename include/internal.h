@@ -41,8 +41,24 @@ typedef struct uniform_location_t{
 	unsigned int tex5;			/*	texture 5.	*/
 	unsigned int tex6;			/*	texture 6.	*/
 	unsigned int tex7;			/*	texture 7.	*/
-
+	unsigned int tex8;			/*	texture 8.	*/
+	unsigned int tex9;			/*	texture 9.	*/
+	unsigned int tex10;			/*	texture 10.	*/
+	unsigned int tex11;			/*	texture 11.	*/
+	unsigned int tex12;			/*	texture 12.	*/
+	unsigned int tex13;			/*	texture 13.	*/
+	unsigned int tex14;			/*	texture 14.	*/
+	unsigned int tex15;			/*	texture 15.	*/
 }UniformLocation;
+
+typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
+typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
+typedef void (*pdisplaygraphic)(ExWin drawable);
+
+presize_screen tmpresize_screen;
+pupdate_shader_uniform tmupdate_shader_uniform;
+
+extern const float quad[4][3];
 
 /**
  *
@@ -56,5 +72,10 @@ void resize_screen_vk(ExEvent* event, struct uniform_location_t* uniform, ExShad
 void update_shader_uniform_gl(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 void update_shader_uniform_vk(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 
+/**
+ *
+ */
+void displaygraphic_gl(ExWin drawable);
+void displaygraphic_vk(ExWin drawable);
 
 #endif
