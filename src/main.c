@@ -548,6 +548,14 @@ void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, 
 	uniform->tex5 = glGetUniformLocation(shader->program, "tex5");
 	uniform->tex6 = glGetUniformLocation(shader->program, "tex6");
 	uniform->tex7 = glGetUniformLocation(shader->program, "tex7");
+	uniform->tex8 = glGetUniformLocation(shader->program, "tex8");
+	uniform->tex9 = glGetUniformLocation(shader->program, "tex9");
+	uniform->tex10 = glGetUniformLocation(shader->program, "tex10");
+	uniform->tex11 = glGetUniformLocation(shader->program, "tex11");
+	uniform->tex12 = glGetUniformLocation(shader->program, "tex12");
+	uniform->tex13 = glGetUniformLocation(shader->program, "tex13");
+	uniform->tex14 = glGetUniformLocation(shader->program, "tex14");
+	uniform->tex15 = glGetUniformLocation(shader->program, "tex15");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
 
 	debugprintf("time %d\n", uniform->time);
@@ -564,6 +572,14 @@ void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, 
 	debugprintf("tex5 %d\n", uniform->tex5);
 	debugprintf("tex6 %d\n", uniform->tex6);
 	debugprintf("tex7 %d\n", uniform->tex7);
+	debugprintf("tex8 %d\n", uniform->tex8);
+	debugprintf("tex9 %d\n", uniform->tex9);
+	debugprintf("tex10 %d\n", uniform->tex10);
+	debugprintf("tex11 %d\n", uniform->tex11);
+	debugprintf("tex12 %d\n", uniform->tex12);
+	debugprintf("tex13 %d\n", uniform->tex13);
+	debugprintf("tex14 %d\n", uniform->tex14);
+	debugprintf("tex15 %d\n", uniform->tex15);
 	debugprintf("backbuffer %d\n", uniform->backbuffer);
 
 	glUseProgram(shader->program);
@@ -582,6 +598,14 @@ void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, 
 	glUniform1i(uniform->tex5, 5);
 	glUniform1i(uniform->tex6, 6);
 	glUniform1i(uniform->tex7, 7);
+	glUniform1i(uniform->tex8, 8);
+	glUniform1i(uniform->tex9, 9);
+	glUniform1i(uniform->tex10, 10);
+	glUniform1i(uniform->tex11, 11);
+	glUniform1i(uniform->tex12, 12);
+	glUniform1i(uniform->tex13, 13);
+	glUniform1i(uniform->tex14, 14);
+	glUniform1i(uniform->tex15, 15);
 	glUniform1i(uniform->backbuffer, numTextures);
 
 
@@ -756,6 +780,8 @@ int main(int argc, const char** argv){
 	else{
 		for(x = 0; x < numFragPaths; x++){
 			srclen = ExLoadFile((const char*)fragPath[x], (void**)&fragData);
+			debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
+
 			/*	compile shader.	*/
 			privatefprintf("----------- compiling source code ----------\n");
 			if(ExLoadShaderv(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
@@ -795,7 +821,7 @@ int main(int argc, const char** argv){
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, NULL );
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
 
 	/*	*/
 	glBindVertexArray(0);
@@ -806,6 +832,7 @@ int main(int argc, const char** argv){
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
 	glDepthMask(FALSE);
+	glDisable(GL_STENCIL_TEST);
 
 	/*	*/
 	ExGetWindowSizev(window, &size);
