@@ -690,7 +690,10 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 	ExCLMem texmem;
 	cl_int error;
 	int x;
-	const int kerneltexindex = 3;
+	int kerneltexindex;
+	cl_uint numKernelArgs;
+	char argname[256];
+	cl_uint argnamesize;
 	program = ExCreateProgram(context, id, cfilename);
 	kernel = ExCreateKernel(program, "main");
 
@@ -698,9 +701,21 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 	unsigned int width;
 	unsigned int height;
 
+	/*	framebuffer image view attributes information.	*/
 	ExSetCLArg(kernel, 0, sizeof(unsigned int), &image);
 	ExSetCLArg(kernel, 1, sizeof(unsigned int), &width);
 	ExSetCLArg(kernel, 2, sizeof(unsigned int), &height);
+	/*	iterate through all the argument */
+	clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
+	for(x = 0; x < numKernelArgs; x++){
+		clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, sizeof(argnamesize), NULL, &argnamesize);
+		clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argnamesize, NULL);
+		/*	check for predefine variable names.	*/
+
+
+	}
+	/*	*/
+	kerneltexindex = 3;
 	for(x = 0; x < 16; x++){
 		if(ExIsTexture( &textures[x].texture)){
 			texmem = clCreateFromGLTexture((cl_context)context,
