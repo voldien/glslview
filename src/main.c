@@ -998,7 +998,7 @@ int main(int argc, const char** argv){
 
 						glUseProgram(shader[x].program);
 
-						glslview_update_uniforms(&shader[x], &uniform[x], ttime, deltatime);
+						glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
 						glslview_displaygraphic(drawable);
 
 						if(uniform[x].backbuffer != -1){
@@ -1066,7 +1066,7 @@ int main(int argc, const char** argv){
 
 					glUseProgram(shader[x].program);
 
-					glslview_update_uniforms(&shader[x], &uniform[x], ttime, deltatime);
+					glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
 					glslview_displaygraphic(drawable);
 
 					if(uniform[x].backbuffer != -1){
