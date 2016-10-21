@@ -18,7 +18,7 @@
 */
 #include<ELT/elt.h>
 #include<ELT/graphic.h>
-//#include"internal.h"
+#include"internal.h"
 
 #include<GL/gl.h>
 #include<GL/glext.h>
@@ -147,34 +147,6 @@ const char* glslview_getVersion(void){
 	return COMPILED_VERSION(GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
 }
 
-/**
- *	GLSL uniform data struct.
- */
-typedef struct uniform_location_t{
-	unsigned int time;			/*	time in seconds as float.	*/
-	unsigned int resolution;	/*	resolution. */
-	unsigned int deltatime;		/*	delta time.	*/
-	unsigned int mouse;			/*	mouse.	*/
-	unsigned int offset;		/*	offset.	*/
-	unsigned int backbuffer;	/*	previous buffer.	*/
-	unsigned int stdin;			/*	stdin data.	*/
-	unsigned int tex0;			/*	texture 0.	*/
-	unsigned int tex1;			/*	texture 1.	*/
-	unsigned int tex2;			/*	texture 2.	*/
-	unsigned int tex3;			/*	texture 3.	*/
-	unsigned int tex4;			/*	texture 4.	*/
-	unsigned int tex5;			/*	texture 5.	*/
-	unsigned int tex6;			/*	texture 6.	*/
-	unsigned int tex7;			/*	texture 7.	*/
-	unsigned int tex8;			/*	texture 8.	*/
-	unsigned int tex9;			/*	texture 9.	*/
-	unsigned int tex10;			/*	texture 10.	*/
-	unsigned int tex11;			/*	texture 11.	*/
-	unsigned int tex12;			/*	texture 12.	*/
-	unsigned int tex13;			/*	texture 13.	*/
-	unsigned int tex14;			/*	texture 14.	*/
-	unsigned int tex15;			/*	texture 15.	*/
-}UniformLocation;
 
 /**/
 static int private_glslview_readargument(int argc, const char** argv, int pre){
@@ -257,6 +229,10 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					}
 					if(strcmp(optarg, "openglcore") == 0){
 						rendererapi = EX_OPENGL_CORE;
+						tmpresize_screen = resize_screen_gl;
+						tmpdisplaygraphic = displaygraphic_gl;
+						tmupdate_shader_uniform = update_shader_uniform_gl;
+						tmpupdate_update_uniforms = glslview_update_uniforms_gl;
 						privatefprintf("Set rendering API to OpenGL core.\n");
 					}
 					else if(strcmp(optarg, "opengles") == 0){
@@ -265,6 +241,10 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
 						rendererapi = EX_VULKAN;
+						tmpresize_screen = resize_screen_vk;
+						tmpdisplaygraphic = displaygraphic_vk;
+						tmupdate_shader_uniform = update_shader_uniform_vk;
+						tmpupdate_update_uniforms = glslview_update_uniforms_vk;
 						privatefprintf("Set rendering API to Vulkan.\n");
 					}
 				}

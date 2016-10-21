@@ -51,12 +51,39 @@ typedef struct uniform_location_t{
 	unsigned int tex15;			/*	texture 15.	*/
 }UniformLocation;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
+typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
 typedef void (*pdisplaygraphic)(ExWin drawable);
+
 
 presize_screen tmpresize_screen;
 pupdate_shader_uniform tmupdate_shader_uniform;
+pdisplaygraphic tmpdisplaygraphic;
+pupdate_update_uniforms tmpupdate_update_uniforms;
 
 extern const float quad[4][3];
 
@@ -75,7 +102,46 @@ void update_shader_uniform_vk(struct uniform_location_t* uniform, ExShader* shad
 /**
  *
  */
+void glslview_update_uniforms_gl(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
+void glslview_update_uniforms_vk(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
+
+/**
+ *
+ */
 void displaygraphic_gl(ExWin drawable);
 void displaygraphic_vk(ExWin drawable);
+
+
+
+
+
+
+
+
+
+
+extern ExWin window;								/*	Window.	*/
+extern ExBoolean fullscreen ;						/*	Set window fullscreen.	*/
+extern ExBoolean verbose;							/*	enable verbose.	*/
+extern ExBoolean debug;								/*	enable debugging.	*/
+extern ExBoolean compression;						/*	Use compression.	*/
+extern unsigned int rendererapi;					/*	Rendering API.	*/
+extern unsigned int isAlive;						/*	*/
+extern int ifd;										/*	inotify file descriptor.*/
+extern int wd;										/*	inotify watch directory.	*/
+extern char* inotifybuf;							/*	*/
+extern unsigned int numFragPaths;					/*	*/
+extern char* fragPath[32];							/*	Path of fragment shader.	*/
+extern unsigned int fbo;							/*	*/
+extern unsigned int ftextype;
+extern unsigned int ftexinternalformat;
+extern unsigned int ftexformat;
+extern ExTexture fbackbuffertex;					/*	framebuffer texture for backbuffer uniform variable.	*/
+extern ExTexture textures[8];						/*	*/
+extern const int numTextures;
+extern unsigned int nextTex;						/*	*/
+extern unsigned int use_stdin_as_buffer;			/*	*/
+extern int stdin_buffer_size;						/*	*/
+
 
 #endif
