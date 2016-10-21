@@ -161,22 +161,27 @@ typedef struct uniform_location_t{
 	unsigned int offset;		/*	offset.	*/
 	unsigned int backbuffer;	/*	previous buffer.	*/
 	unsigned int stdin;			/*	stdin data.	*/
-	unsigned int tex0;			/*	texture 0.	*/
-	unsigned int tex1;			/*	texture 1.	*/
-	unsigned int tex2;			/*	texture 2.	*/
-	unsigned int tex3;			/*	texture 3.	*/
-	unsigned int tex4;			/*	texture 4.	*/
-	unsigned int tex5;			/*	texture 5.	*/
-	unsigned int tex6;			/*	texture 6.	*/
-	unsigned int tex7;			/*	texture 7.	*/
-	unsigned int tex8;			/*	texture 8.	*/
-	unsigned int tex9;			/*	texture 9.	*/
-	unsigned int tex10;			/*	texture 10.	*/
-	unsigned int tex11;			/*	texture 11.	*/
-	unsigned int tex12;			/*	texture 12.	*/
-	unsigned int tex13;			/*	texture 13.	*/
-	unsigned int tex14;			/*	texture 14.	*/
-	unsigned int tex15;			/*	texture 15.	*/
+	union{
+		struct{
+			unsigned int tex0;			/*	texture 0.	*/
+			unsigned int tex1;			/*	texture 1.	*/
+			unsigned int tex2;			/*	texture 2.	*/
+			unsigned int tex3;			/*	texture 3.	*/
+			unsigned int tex4;			/*	texture 4.	*/
+			unsigned int tex5;			/*	texture 5.	*/
+			unsigned int tex6;			/*	texture 6.	*/
+			unsigned int tex7;			/*	texture 7.	*/
+			unsigned int tex8;			/*	texture 8.	*/
+			unsigned int tex9;			/*	texture 9.	*/
+			unsigned int tex10;			/*	texture 10.	*/
+			unsigned int tex11;			/*	texture 11.	*/
+			unsigned int tex12;			/*	texture 12.	*/
+			unsigned int tex13;			/*	texture 13.	*/
+			unsigned int tex14;			/*	texture 14.	*/
+			unsigned int tex15;			/*	texture 15.	*/
+		};
+		unsigned int tex[16];
+	};
 }UniformLocation;
 
 /**/
@@ -681,10 +686,13 @@ ExOpenCLContext createCLContext(ExOpenGLContext shared, ExCLDeviceID* id){
 	}
 	id = ExGetContextDevices(context, &id, NULL);
 	queue = ExCreateCommandQueue(context, id);
+
+	ExCreateCLImage(context);
+
 	return context;
 }
 
-ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char* cfilename){
+ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char* cfilename, UniformLocation* uniform){
 	ExCLProgram program;
 	ExCLKernel kernel;
 	ExCLMem texmem;
@@ -703,20 +711,40 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 
 	/*	framebuffer image view attributes information.	*/
 	ExSetCLArg(kernel, 0, sizeof(unsigned int), &image);
-	ExSetCLArg(kernel, 1, sizeof(unsigned int), &width);
-	ExSetCLArg(kernel, 2, sizeof(unsigned int), &height);
+
 	/*	iterate through all the argument */
-	clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
-	for(x = 0; x < numKernelArgs; x++){
-		clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, sizeof(argnamesize), NULL, &argnamesize);
-		clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argnamesize, NULL);
+	kerneltexindex = 1;
+	error = clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
+	for(x = kerneltexindex; x < numKernelArgs; x++){
+		error = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, sizeof(argnamesize), NULL, &argnamesize);
+		error = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argname, NULL);
 		/*	check for predefine variable names.	*/
+		if(strcmp(argname, "resolution") == 0){
+			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
+			uniform->resolution = x;
+			continue;
+		}
+		if(strcmp(argname, "time") == 0){
+			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
+			uniform->time = x;
+			continue;
+		}
+		if(strcmp(argname, "mouse") == 0){
+			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
+			uniform->mouse = x;
+			continue;
+		}
+		if(strcmp(argname, "deltatime") == 0){
+			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
+			uniform->deltatime = x;
+			continue;
+		}
 
-
+		kerneltexindex++;
 	}
+
 	/*	*/
-	kerneltexindex = 3;
-	for(x = 0; x < 16; x++){
+	for(x = 0; x < sizeof(textures) / sizeof(textures[0]); x++){
 		if(ExIsTexture( &textures[x].texture)){
 			texmem = clCreateFromGLTexture((cl_context)context,
 					CL_MEM_READ_ONLY,
@@ -724,9 +752,8 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 					0,
 					textures[x].texture,
 					&error);
-			ExSetCLArg(kernel, kerneltexindex * x + 0, sizeof(ExCLMem), &texmem);
-			ExSetCLArg(kernel, kerneltexindex * x + 1, sizeof(unsigned int), &textures[x].width);
-			ExSetCLArg(kernel, kerneltexindex * x + 2, sizeof(unsigned int), &textures[x].height);
+			ExSetCLArg(kernel, kerneltexindex  + x + 0, sizeof(ExCLMem), &texmem);
+			uniform->tex[x + kerneltexindex] = x;
 
 		}else{
 			break;
