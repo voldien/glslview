@@ -915,7 +915,7 @@ int main(int argc, const char** argv){
 
 
 	if(usingopencl){
-		createCLProgram(clc, deviceid, clfrag);
+		createCLProgram(clc, deviceid, clfrag, &uniform[0]);
 	}
 
 
