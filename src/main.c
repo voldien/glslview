@@ -43,6 +43,7 @@
 //#include<hpm/hpm.h>
 //#include<assimp/cimport.h>
 #include<CL/cl.h>
+#include<CL/cl_gl.h>
 
 #ifndef GLSLVIEW_MAJOR_VERSION
 	#define GLSLVIEW_MAJOR_VERSION	0
@@ -100,6 +101,7 @@ unsigned int ftexinternalformat = GL_RGBA;
 unsigned int ftexformat = GL_RGBA;
 ExTexture fbackbuffertex = {0};					/*	framebuffer texture for backbuffer uniform variable.	*/
 ExTexture textures[8] = {{0}};					/*	*/
+ExTexture clframetexture;
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
@@ -675,10 +677,9 @@ void glslview_terminate(void){
 ExOpenCLContext createCLContext(ExOpenGLContext shared, ExCLDeviceID* id){
 	ExOpenCLContext context;
 	ExCLCommandQueue queue;
-	if(shared == NULL){
-		privatefprintf("");
-		return NULL;
-	}
+	cl_int err;
+	cl_mem frametexture;
+	assert(shared);
 
 	context = ExCreateCLSharedContext(shared, 0);
 	if(context == NULL){
@@ -687,7 +688,11 @@ ExOpenCLContext createCLContext(ExOpenGLContext shared, ExCLDeviceID* id){
 	id = ExGetContextDevices(context, &id, NULL);
 	queue = ExCreateCommandQueue(context, id);
 
-	ExCreateCLImage(context);
+	/*	*/
+	ExCreateTexture(&clframetexture, GL_TEXTURE_2D, 0, GL_RGB, 512, 512, 0 , GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	frametexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY,  GL_TEXTURE_2D, 0, clframetexture.texture, &err);
+	/*	*/
+
 
 	return context;
 }
