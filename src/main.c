@@ -898,6 +898,7 @@ int main(int argc, const char** argv){
 	char* fragData = NULL;						/*	*/
 	int x;										/*	*/
 
+	/*	quad buffer.	*/
 	unsigned int vao = 0;						/*	*/
 	unsigned int vbo = 0;						/*	*/
 	hpmvec4x4f_t model;							/*	world space matrix.	*/
@@ -907,6 +908,7 @@ int main(int argc, const char** argv){
 	hpmquatf camrotate;							/*	camera rotation as a quaternion.	*/
 
 	pswapbuffer = ExSwapBuffers;				/*	TODO resolve for EGL or GLX/WGL.	*/
+
 
 
 
@@ -1140,14 +1142,20 @@ int main(int argc, const char** argv){
 			}
 
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
-				glslview_resize_screen(&event, &uniform, &shader, &fbackbuffertex);
+
 				if(usepolygone){
 
 				}
+				for(x = 0; x < numShaderPass; x++){
+					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
+				}
+
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
-				glslview_resize_screen(&event, &uniform, &shader, &fbackbuffertex);
+				for(x = 0; x < numShaderPass; x++){
+					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
+				}
 			}
 
 			if(event.event & EX_EVENT_ON_UNFOCUSE){
@@ -1248,7 +1256,7 @@ int main(int argc, const char** argv){
 					if(ionevent.mask & IN_MODIFY){
 
 						for(x = 0; x < numFragPaths; x++){
-							if(strcmp(ionevent.name, ExGetBaseName( fragPath[x], NULL, NULL) ) == 0){
+							if(strcmp(ionevent.name, ExGetBaseName( fragPath[x], NULL, 0) ) == 0){
 								privatefprintf("Updating %s\n", fragPath[x]);
 
 								ExDeleteShaderProgram(&shader[x]);
@@ -1320,7 +1328,7 @@ int main(int argc, const char** argv){
 	if(ExGetCurrentOpenGLContext()){
 		for(x = 0; x < numShaderPass; x++){
 			if(glIsProgram(shader[x].program) == GL_TRUE){
-				ExDeleteShaderProgram(&shader);
+				ExDeleteShaderProgram(&shader[x]);
 			}
 		}
 		if( glIsVertexArray(vao) == GL_TRUE){
