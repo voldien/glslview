@@ -67,6 +67,17 @@ const char* vertex = ""
 "gl_Position = vec4(vertex,1.0);\n"
 "}\n";
 
+/**/
+const char* quadfrag = ""
+"#version 330 core\n"
+"layout(location = 0) out vec4 fragColor;\n"
+"uniform sampler2D cltex;\n"
+"uniform vec2 resolution;\n"
+"void main(void){\n"
+"vec2 uv = gl_FragCoord.xy / resolution;\n"
+"fragColor = texture(cltex, uv);\n"
+"}\n";
+
 
 /**/
 static const float quad[4][3] = {
@@ -76,7 +87,6 @@ static const float quad[4][3] = {
 		{ 1.0f,  1.0f, 0.0f},
 
 };
-
 
 
 
@@ -106,7 +116,13 @@ const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
-unsigned int usingopencl = 0;
+
+unsigned int usingopencl = 0;					/*	*/
+cl_context clcontext;							/*	*/
+cl_device_id cldevice;							/*	*/
+cl_program clprogram;							/*	*/
+cl_kernel clkernel;								/*	*/
+cl_mem clmemframetexture;						/*	*/
 
 typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 pswapbufferfunctype pswapbuffer;					/*	Function pointer for swap default framebuffer.	*/
@@ -185,6 +201,10 @@ typedef struct uniform_location_t{
 		unsigned int tex[16];
 	};
 }UniformLocation;
+
+/*	TODO relocate later!	*/
+extern cl_context createCLContext(ExOpenGLContext shared, cl_device_id* id);
+extern cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfilename, UniformLocation* uniform);
 
 /**/
 static int private_glslview_readargument(int argc, const char** argv, int pre){
@@ -311,6 +331,9 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 				break;
 			case 'c':	/*	TODO create opencl context.	*/
 				usingopencl = 1;
+				if(optarg){
+
+				}
 				break;
 			case '\?':
 			case ':':
@@ -413,6 +436,19 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 				}
 
 				inotifybuf = malloc(4096);
+			case 'c':
+				if(optarg){
+					if(clcontext == NULL){
+						clcontext = createCLContext(ExGetCurrentOpenGLContext(), &cldevice);
+						if(clcontext == NULL){
+							exit(EXIT_FAILURE);
+						}
+					}
+					clprogram = createCLProgram(clcontext, cldevice, optarg, NULL);
+
+
+				}
+				break;
 			case 't':
 				if(optarg){
 					regex_t reg;
@@ -674,11 +710,14 @@ void glslview_terminate(void){
 
 
 
-ExOpenCLContext createCLContext(ExOpenGLContext shared, ExCLDeviceID* id){
+cl_context createCLContext(ExOpenGLContext shared, cl_device_id* id){
 	ExOpenCLContext context;
 	ExCLCommandQueue queue;
+	//cl_context context;
+	cl_platform_id platform;
+	cl_device_id devices;
 	cl_int err;
-	cl_mem frametexture;
+
 	assert(shared);
 
 	context = ExCreateCLSharedContext(shared, 0);
@@ -688,20 +727,19 @@ ExOpenCLContext createCLContext(ExOpenGLContext shared, ExCLDeviceID* id){
 	id = ExGetContextDevices(context, &id, NULL);
 	queue = ExCreateCommandQueue(context, id);
 
+
 	/*	*/
 	ExCreateTexture(&clframetexture, GL_TEXTURE_2D, 0, GL_RGB, 512, 512, 0 , GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	frametexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY,  GL_TEXTURE_2D, 0, clframetexture.texture, &err);
-	/*	*/
-
+	clmemframetexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY,  GL_TEXTURE_2D, 0, clframetexture.texture, &err);
 
 	return context;
 }
 
-ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char* cfilename, UniformLocation* uniform){
-	ExCLProgram program;
-	ExCLKernel kernel;
-	ExCLMem texmem;
-	cl_int error;
+cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfilename, UniformLocation* uniform){
+	cl_program program;
+	cl_kernel kernel;
+	cl_mem texmem;
+	cl_int err;
 	int x;
 	int kerneltexindex;
 	cl_uint numKernelArgs;
@@ -714,15 +752,16 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 	unsigned int width;
 	unsigned int height;
 
-	/*	framebuffer image view attributes information.	*/
-	ExSetCLArg(kernel, 0, sizeof(unsigned int), &image);
 
-	/*	iterate through all the argument */
+	/*	framebuffer image view attributes information.	*/
+	ExSetCLArg(kernel, 0, sizeof(unsigned int), &clmemframetexture);
+
+	/*	iterate through all the argument.	*/
 	kerneltexindex = 1;
-	error = clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
+	err = clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
 	for(x = kerneltexindex; x < numKernelArgs; x++){
-		error = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, sizeof(argnamesize), NULL, &argnamesize);
-		error = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argname, NULL);
+		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, sizeof(argnamesize), NULL, &argnamesize);
+		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argname, NULL);
 		/*	check for predefine variable names.	*/
 		if(strcmp(argname, "resolution") == 0){
 			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
@@ -756,7 +795,7 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 					textures[x].target,
 					0,
 					textures[x].texture,
-					&error);
+					&err);
 			ExSetCLArg(kernel, kerneltexindex  + x + 0, sizeof(ExCLMem), &texmem);
 			uniform->tex[x + kerneltexindex] = x;
 
@@ -767,8 +806,6 @@ ExCLProgram createCLProgram(ExOpenCLContext context, ExCLDeviceID id, const char
 
 	return program;
 }
-
-
 
 
 int main(int argc, const char** argv){
