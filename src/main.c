@@ -71,6 +71,7 @@ typedef struct mesh_object_t{
 	unsigned int vbo;
 	unsigned int ibo;
 	unsigned int vao;
+	unsigned int indicescount;
 	union{
 		struct{
 			hpmvec3f center;
@@ -108,9 +109,7 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	int x;
 	int y;
 	int z;
-	scene = aiImportFile(cfilename, aiProcessPreset_TargetRealtime_Quality/*aiProcess_Triangulate |
-									aiProcess_GenSmoothNormals |
-									aiProcess_CalcTangentSpace*/);
+	scene = aiImportFile(cfilename, aiProcessPreset_TargetRealtime_Quality);
 
 	if(scene == NULL){
 		fprintf(stderr, aiGetErrorString());
@@ -123,12 +122,17 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	for(x = 0; x < scene->mNumMeshes; x++){
 		mesh = scene->mMeshes[x];
 		if(mesh){
-			totalVerticesCount += mesh->mNumVertices;
-			totalIndicesCount += mesh->mNumFaces;
+			if(mesh->mPrimitiveTypes == aiPrimitiveType_TRIANGLE){
+				totalVerticesCount += mesh->mNumVertices;
+				totalIndicesCount += mesh->mNumFaces;
+			}
+			else{
+				debugprintf("excluded.\n");
+			}
 		}
 	}
 	totalIndicesCount *= 3;
-	nfloats = (3 + 2 + 3 + 3);
+	nfloats = (3 + 2 + 3 + 3 + 3);
 	stride = nfloats * sizeof(float);
 	privatefprintf("Total vertices count %d\n", totalVerticesCount);
 	privatefprintf("Total indices count %d\n", totalIndicesCount);
@@ -143,11 +147,13 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
+	glEnableVertexAttribArray(4);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void*)0);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (const void*)12);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (const void*)20);
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (const void*)32);
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, (const void*)44);
 
 	glGenBuffers(1, &vbo);
 	glGenBuffers(1, &ibo);
@@ -171,13 +177,18 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 
 	for(x = 0; x < scene->mNumMeshes; x++){
 		mesh = scene->mMeshes[x];
-		debugprintf("Process mesh %s.\n", mesh->mName.data);
+		debugprintf("Process mesh %s. v : %d, i : %d\n", mesh->mName.data, mesh->mNumVertices, mesh->mNumFaces);
+
+		if(mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE){
+			continue;
+		}
 
 		for(y = 0; y < mesh->mNumVertices; y++){
-			memcpy(&vertex[nvertexfloats + y * stride + 0], &mesh->mVertices[y], sizeof(struct aiVector3D));
-			memcpy(&vertex[nvertexfloats + y * stride + 3], &mesh->mTextureCoords[0][y], sizeof(struct aiVector2D));
-			memcpy(&vertex[nvertexfloats + y * stride + 5], &mesh->mNormals[y], sizeof(struct aiVector3D));
-			memcpy(&vertex[nvertexfloats + y * stride + 8], &mesh->mTangents[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * nfloats + 0], &mesh->mVertices[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * nfloats + 3], &mesh->mTextureCoords[0][y], sizeof(struct aiVector2D));
+			memcpy(&vertex[nvertexfloats + y * nfloats + 5], &mesh->mNormals[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * nfloats + 8], &mesh->mTangents[y], sizeof(struct aiVector3D));
+			memcpy(&vertex[nvertexfloats + y * nfloats + 11], &mesh->mBitangents[y], sizeof(struct aiVector3D));
 		}
 
 		for(z = 0; z < mesh->mNumFaces; z++){
@@ -200,8 +211,9 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glUnmapBuffer(GL_ARRAY_BUFFER);
 	glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
 
-
 	glBindVertexArray(0);
+	pmesh->indicescount = totalIndicesCount;
+
 
 	/*	*/
 	debugprintf("Releasing assimp scene data.\n");
@@ -863,9 +875,17 @@ void glslview_resize_screen(ExEvent* event, UniformLocation* uniform, ExShader* 
  *
  */
 void glslview_displaygraphic(ExWin drawable){
-	/*	draw quad.	*/
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
 
+
+	if(usepolygone){
+		glBindVertexArray(mesh.vao);
+		glDrawElements(GL_TRIANGLES, mesh.indicescount, GL_UNSIGNED_INT, NULL);
+		glBindVertexArray(0);
+	}
+	else{
+		/*	draw quad.	*/
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
+	}
 	/**/
 	pswapbuffer(drawable);
 }
@@ -886,8 +906,8 @@ int main(int argc, const char** argv){
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
 
-	struct uniform_location_t uniform[32] = {0};	/*	uniform.	*/
-	ExShader shader[32] = {0};						/*	*/
+	struct uniform_location_t uniform[32] = {{0}};	/*	uniform.	*/
+	ExShader shader[32] = {{0}};						/*	*/
 	unsigned int numShaderPass = 0;					/*	*/
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
@@ -904,8 +924,11 @@ int main(int argc, const char** argv){
 	hpmvec4x4f_t model;							/*	world space matrix.	*/
 	hpmvec4x4f_t view;							/*	camera space matrix.	*/
 	hpmvec4x4f_t perspective;					/*	perspective matrix.	*/
-	hpmvec3f campos;							/*	camera position.	*/
+	hpmvec4x4f_t mvp;
+	hpmvec4x4f_t tmpmat;
+	hpmvec3f campos = {0.0f};							/*	camera position.	*/
 	hpmquatf camrotate;							/*	camera rotation as a quaternion.	*/
+	hpmquatf rotate;
 
 	pswapbuffer = ExSwapBuffers;				/*	TODO resolve for EGL or GLX/WGL.	*/
 
@@ -1087,6 +1110,7 @@ int main(int argc, const char** argv){
 
 
 	if(usepolygone){
+		hpm_quat_identityfv(&camrotate);
 		hpm_mat4x4_identityfv(view);
 		hpm_mat4x4_identityfv(model);
 		hpm_mat4x4_projfv(perspective, HPM_RAD2DEG(90.0f), (float)size.width / (float)size.height, 0.15f, 1000.0f);
@@ -1144,7 +1168,10 @@ int main(int argc, const char** argv){
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
 
 				if(usepolygone){
-
+					/*	update the perspective.	*/
+					hpm_mat4x4_projfv(perspective, HPM_RAD2DEG(90.0f),
+							(float)event.size.width / (float)event.size.height,
+							0.15f, 1000.0f);
 				}
 				for(x = 0; x < numShaderPass; x++){
 					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
@@ -1194,6 +1221,11 @@ int main(int argc, const char** argv){
 		}
 
 
+		if(usepolygone){
+			hpm_mat4x4_multiply_mat4x4fv(perspective, view, tmpmat);
+			hpm_mat4x4_multiply_mat4x4fv(tmpmat, model, mvp);
+		}
+
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
 			fd_set readfd;
@@ -1229,7 +1261,8 @@ int main(int argc, const char** argv){
 						}
 
 
-							glslview_displaygraphic(drawable);
+						glslview_displaygraphic(drawable);
+
 
 						if(uniform[x].backbuffer != -1){
 							glActiveTexture(GL_TEXTURE0 + numTextures);
