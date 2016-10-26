@@ -111,7 +111,7 @@ pswapbufferfunctype pswapbuffer;					/*	Function pointer for swap default frameb
 
 
 /**/
-static int privatefprintf(const char* format,...){
+int privatefprintf(const char* format,...){
 	va_list larg;
 	int status;
 
@@ -126,7 +126,7 @@ static int privatefprintf(const char* format,...){
 	return status;
 }
 
-static int debugprintf(const char* format,...){
+int debugprintf(const char* format,...){
 	va_list larg;
 	int status;
 
@@ -226,24 +226,27 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					if(strcmp(optarg, "opengl") == 0){
 						rendererapi = EX_OPENGL;
 						privatefprintf("Set rendering API to OpenGL.\n");
+
 					}
 					if(strcmp(optarg, "openglcore") == 0){
 						rendererapi = EX_OPENGL_CORE;
-						tmpresize_screen = resize_screen_gl;
-						tmpdisplaygraphic = displaygraphic_gl;
-						tmupdate_shader_uniform = update_shader_uniform_gl;
-						tmpupdate_update_uniforms = glslview_update_uniforms_gl;
 						privatefprintf("Set rendering API to OpenGL core.\n");
+						/*	TODO set it for all the opengl as well.	*/
+						tmpresize_screen = glslview_resize_screen_gl;
+						tmpdisplaygraphic = glslview_displaygraphic_gl;
+						tmupdate_shader_uniform = glslview_update_shader_uniform_gl;
+						tmpupdate_update_uniforms = glslview_update_uniforms_gl;
 					}
 					else if(strcmp(optarg, "opengles") == 0){
 						rendererapi = EX_OPENGLES;
 						privatefprintf("Set rendering API to OpenGL-ES.\n");
+
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
 						rendererapi = EX_VULKAN;
-						tmpresize_screen = resize_screen_vk;
-						tmpdisplaygraphic = displaygraphic_vk;
-						tmupdate_shader_uniform = update_shader_uniform_vk;
+						tmpresize_screen = glslview_resize_screen_vk;
+						tmpdisplaygraphic = glslview_displaygraphic_vk;
+						tmupdate_shader_uniform = glslview_update_shader_uniform_vk;
 						tmpupdate_update_uniforms = glslview_update_uniforms_vk;
 						privatefprintf("Set rendering API to Vulkan.\n");
 					}

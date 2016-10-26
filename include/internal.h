@@ -90,14 +90,14 @@ extern const float quad[4][3];
 /**
  *
  */
-void resize_screen_gl(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
-void resize_screen_vk(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
+void glslview_resize_screen_gl(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
+void glslview_resize_screen_vk(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 
 /**
  *
  */
-void update_shader_uniform_gl(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
-void update_shader_uniform_vk(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
+void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
+void glslview_update_shader_uniform_vk(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 
 /**
  *
@@ -108,8 +108,8 @@ void glslview_update_uniforms_vk(UniformLocation* uniform, ExShader* shader, flo
 /**
  *
  */
-void displaygraphic_gl(ExWin drawable);
-void displaygraphic_vk(ExWin drawable);
+void glslview_displaygraphic_gl(ExWin drawable);
+void glslview_displaygraphic_vk(ExWin drawable);
 
 
 
@@ -117,7 +117,8 @@ void displaygraphic_vk(ExWin drawable);
 
 
 
-
+extern int privatefprintf(const char* format,...);
+extern int debugprintf(const char* format,...);
 
 
 extern ExWin window;								/*	Window.	*/
