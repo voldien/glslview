@@ -670,7 +670,7 @@ int main(int argc, const char** argv){
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
 
-	struct uniform_location_t uniform[32] = {0};	/*	uniform.	*/
+	UniformLocation uniform[32] = {0};	/*	uniform.	*/
 	ExShader shader[32] = {0};						/*	*/
 	unsigned int numShaderPass = 0;					/*	*/
 	unsigned int isPipe;						/*	*/
