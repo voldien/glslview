@@ -72,6 +72,7 @@ typedef struct mesh_object_t{
 	unsigned int ibo;
 	unsigned int vao;
 	unsigned int indicescount;
+	unsigned int verticescount;
 	union{
 		struct{
 			hpmvec3f center;
@@ -213,6 +214,7 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 
 	glBindVertexArray(0);
 	pmesh->indicescount = totalIndicesCount;
+	pmesh->verticescount = totalVerticesCount;
 
 
 	/*	*/
@@ -957,6 +959,10 @@ int main(int argc, const char** argv){
 		return EXIT_SUCCESS;
 	}
 	numShaderPass = numFragPaths;
+	if(numShaderPass == 0){
+		printf("No valid shader.\n");
+		return EXIT_FAILURE;
+	}
 
 	/**/
 	printf("\n");
@@ -1330,6 +1336,13 @@ int main(int argc, const char** argv){
 						if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
 							glUniform1iv(uniform[x].stdin, 4, (const GLint*)&buffer);
 						}
+					}
+
+					if(uniform[x].mvp != -1){
+						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, mvp);
+					}
+					if(uniform[x].model != -1){
+						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, model);
 					}
 
 					glslview_displaygraphic(drawable);
