@@ -73,17 +73,17 @@ typedef struct uniform_location_t{
 
 
 
-typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
+typedef void (ELTAPIFASTENTRY *pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
 typedef void (*pdisplaygraphic)(ExWin drawable);
 
 
-presize_screen tmpresize_screen;
-pupdate_shader_uniform tmupdate_shader_uniform;
-pdisplaygraphic tmpdisplaygraphic;
-pupdate_update_uniforms tmpupdate_update_uniforms;
+presize_screen glslview_resize_screen;
+pupdate_shader_uniform glslview_update_shader_uniform;
+pdisplaygraphic glslview_displaygraphic;
+pupdate_update_uniforms glslview_update_uniforms;
 
 extern const float quad[4][3];
 
@@ -143,6 +143,6 @@ extern const int numTextures;
 extern unsigned int nextTex;						/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;						/*	*/
-
+extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
 #endif

@@ -15,7 +15,7 @@ void glslview_update_shader_uniform_vk(struct uniform_location_t* uniform, ExSha
 void glslview_displaygraphic_vk(ExWin drawable){
 
 	/**/
-	pswapbuffer(drawable);
+	glslview_swapbuffer(drawable);
 }
 
 

@@ -120,7 +120,7 @@ void glslview_displaygraphic_gl(ExWin drawable){
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
 
 	/**/
-	pswapbuffer(drawable);
+	glslview_swapbuffer(drawable);
 }
 
 
