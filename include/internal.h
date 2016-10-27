@@ -73,7 +73,7 @@ typedef struct uniform_location_t{
 
 
 
-typedef void (ELTAPIFASTENTRY *pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
+typedef void (pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
