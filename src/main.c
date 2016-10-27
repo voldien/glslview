@@ -119,7 +119,9 @@ int stdin_buffer_size = 1;						/*	*/
 
 unsigned int usingopencl = 0;					/*	*/
 cl_context clcontext;							/*	*/
-cl_device_id cldevice;							/*	*/
+unsigned int ncldevices;
+cl_device_id* cldevice;							/*	*/
+cl_command_queue clqueue;
 cl_program clprogram;							/*	*/
 cl_kernel clkernel;								/*	*/
 cl_mem clmemframetexture;						/*	*/
@@ -203,8 +205,8 @@ typedef struct uniform_location_t{
 }UniformLocation;
 
 /*	TODO relocate later!	*/
-extern cl_context createCLContext(ExOpenGLContext shared, cl_device_id* id);
-extern cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfilename, UniformLocation* uniform);
+extern cl_context createCLContext(ExOpenGLContext shared, unsigned int* nNumDevices, cl_device_id** id);
+extern cl_program createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
 
 /**/
 static int private_glslview_readargument(int argc, const char** argv, int pre){
@@ -238,7 +240,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 	int c;
 	int index;
 	int status = 1;
-	const char* shortopts = "dIhsar:g:Vf:SA:t:vFnCp:w";
+	const char* shortopts = "dIhsar:g:Vf:SA:t:vFnCp:wc:";
 
 	/*	*/
 	if(pre == 0){
@@ -439,12 +441,12 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			case 'c':
 				if(optarg){
 					if(clcontext == NULL){
-						clcontext = createCLContext(ExGetCurrentOpenGLContext(), &cldevice);
+						clcontext = createCLContext(ExGetCurrentOpenGLContext(), &ncldevices, &cldevice);
 						if(clcontext == NULL){
 							exit(EXIT_FAILURE);
 						}
 					}
-					clprogram = createCLProgram(clcontext, cldevice, optarg, NULL);
+					clprogram = createCLProgram(clcontext, ncldevices, cldevice, optarg, NULL);
 
 
 				}
@@ -707,25 +709,139 @@ void glslview_terminate(void){
 }
 
 
+/**/
+cl_context createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device){
+	cl_int ciErrNum;
+	cl_context context;
+	cl_platform_id* platforms;
+	cl_device_id* devices = NULL;
+	cl_device_id curgldevice;
+	int x = 0;
+	size_t i;
+
+	/**/
+	cl_context_properties props[] = {
+			CL_CONTEXT_PLATFORM, (cl_context_properties)NULL,
+			CL_GL_CONTEXT_KHR,   (cl_context_properties)shared,
+			CL_GLX_DISPLAY_KHR,     (cl_context_properties)ExGetDisplay(),
+			0
+	};
+
+	unsigned int nDevices = 0;
+	unsigned int nPlatforms = 0;
+	unsigned int nselectPlatform = 0;
+
+	/*	get platform id.	*/
+	ciErrNum = clGetPlatformIDs(0, NULL, &nPlatforms);
+	platforms = malloc(sizeof(*platforms) * nPlatforms);
+	ciErrNum = clGetPlatformIDs(nPlatforms, platforms, NULL);
+
+	/*	iterate */
+	for(x = 0; x < nPlatforms; x++){
+		props[1] = (cl_context_properties)platforms[x];
+		size_t bytes = 0;
+
+		/*	queuring how much bytes we need to read	*/
+		clGetGLContextInfoKHR(props, CL_DEVICES_FOR_GL_CONTEXT_KHR, 0, NULL, &bytes);
+		clGetGLContextInfoKHR(props, CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR, 0, NULL, &bytes);
+
+		// allocating the mem
+		size_t devNum = bytes/sizeof(cl_device_id);
+		devices = (cl_device_id*)realloc(devices, bytes + nDevices * sizeof(cl_device_id));
+
+		/**/
+		clGetGLContextInfoKHR(props, CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR, bytes, &devices[nDevices], NULL);
+		nDevices += devNum;
+		/*	iterate over all devices	*/
+		for(i = 0; i < devNum; i++){
+		      /*	enumerating the devices for the type, names, CL_DEVICE_EXTENSIONS, etc	*/
+		}
+
+	}
+	/*	create context.	*/
+	props[1] = platforms[nselectPlatform];
+	context = clCreateContext(props, nDevices, devices, NULL, NULL, &ciErrNum);
+	if(context == NULL){
+		/*	fprintf(stderr, "Failed to create OpenCL context. %d\n  [ %s ]", ciErrNum, get_cl_error_str(ciErrNum));	*/
+	}
+
+	if(device){
+		*device = devices;
+	}
+	if(numDevices){
+		*numDevices = nDevices;
+	}
+
+	free(platforms);
+	return context;
+}
 
 
+/*	Create OpenCL program.	*/
+cl_program createProgram(cl_context context, unsigned int nDevices, cl_device_id* device, const char* cfilename){
+	cl_int ciErrNum;
+	cl_program program;
+	char* source;
+	FILE* f;
+	long int flen;
+	f = fopen(cfilename, "rb");
+	fseek(f, 0, SEEK_END);
+	flen = ftell(f);
+	fseek(f, SEEK_SET, 0);
+	source = (char*)malloc(flen);
+	fread(source, 1, flen, f);
+	fclose(f);
 
-cl_context createCLContext(ExOpenGLContext shared, cl_device_id* id){
-	ExOpenCLContext context;
-	ExCLCommandQueue queue;
-	//cl_context context;
+	program = clCreateProgramWithSource(context, 1, (const char **)&source, NULL, &ciErrNum);
+
+	if(program == NULL || ciErrNum != CL_SUCCESS){
+		//fprintf(stderr, "Failed to create program %d %s\n", ciErrNum, get_cl_error_str(ciErrNum));
+	}
+
+	ciErrNum = clBuildProgram(program, nDevices, device, NULL, NULL, NULL);
+	if(ciErrNum != CL_SUCCESS){
+		if(ciErrNum == CL_BUILD_PROGRAM_FAILURE){
+			size_t build_log_size = 900;
+			char build_log[900];
+			size_t build_log_ret;
+
+			ciErrNum =  clGetProgramBuildInfo(program, device[0], CL_PROGRAM_BUILD_LOG, build_log_size, build_log, &build_log_ret);
+			fprintf(stderr, build_log );
+		}
+	}
+	free(source);
+	return program;
+}
+
+
+cl_command_queue createcommandqueue(cl_context context, cl_device_id device){
+	cl_int error;
+	cl_command_queue queue;
+	cl_command_queue_properties pro = 0;
+	queue = clCreateCommandQueue(context,
+			device,
+			pro,
+			&error);
+	if(error != CL_SUCCESS){
+		fprintf(stderr, "Failed to create command queue . %d \n", error);
+	}
+	return queue;
+}
+
+
+cl_context createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices){
+	cl_command_queue queue;
+	cl_context context;
 	cl_platform_id platform;
-	cl_device_id devices;
 	cl_int err;
 
 	assert(shared);
 
-	context = ExCreateCLSharedContext(shared, 0);
+	context = createclcontext(shared, ncldevices, devices);
 	if(context == NULL){
-
+		return NULL;
 	}
-	id = ExGetContextDevices(context, &id, NULL);
-	queue = ExCreateCommandQueue(context, id);
+	queue = createcommandqueue(context, devices[0]);
 
 
 	/*	*/
@@ -735,7 +851,7 @@ cl_context createCLContext(ExOpenGLContext shared, cl_device_id* id){
 	return context;
 }
 
-cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfilename, UniformLocation* uniform){
+cl_program createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform){
 	cl_program program;
 	cl_kernel kernel;
 	cl_mem texmem;
@@ -744,9 +860,10 @@ cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfil
 	int kerneltexindex;
 	cl_uint numKernelArgs;
 	char argname[256];
-	cl_uint argnamesize;
-	program = ExCreateProgram(context, id, cfilename);
-	kernel = ExCreateKernel(program, "main");
+	size_t argnamesize;
+	program = createProgram(context, nNumDevices, id, cfilename);
+	assert(program);
+	kernel = clCreateKernel(program, "main", &err);
 
 	unsigned int image;
 	unsigned int width;
@@ -754,32 +871,32 @@ cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfil
 
 
 	/*	framebuffer image view attributes information.	*/
-	ExSetCLArg(kernel, 0, sizeof(unsigned int), &clmemframetexture);
+	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clmemframetexture);
 
 	/*	iterate through all the argument.	*/
 	kerneltexindex = 1;
 	err = clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
 	for(x = kerneltexindex; x < numKernelArgs; x++){
-		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, sizeof(argnamesize), NULL, &argnamesize);
-		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argname, NULL);
+		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, 0, NULL, &argnamesize);
+		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argname, &argnamesize);
 		/*	check for predefine variable names.	*/
 		if(strcmp(argname, "resolution") == 0){
-			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
+			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
 			uniform->resolution = x;
 			continue;
 		}
 		if(strcmp(argname, "time") == 0){
-			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
+			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
 			uniform->time = x;
 			continue;
 		}
 		if(strcmp(argname, "mouse") == 0){
-			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
+			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
 			uniform->mouse = x;
 			continue;
 		}
 		if(strcmp(argname, "deltatime") == 0){
-			ExSetCLArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
+			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
 			uniform->deltatime = x;
 			continue;
 		}
@@ -796,7 +913,7 @@ cl_program createCLProgram(cl_context context, cl_device_id id, const char* cfil
 					0,
 					textures[x].texture,
 					&err);
-			ExSetCLArg(kernel, kerneltexindex  + x + 0, sizeof(ExCLMem), &texmem);
+			clSetKernelArg(kernel, kerneltexindex  + x + 0, sizeof(cl_mem), &texmem);
 			uniform->tex[x + kerneltexindex] = x;
 
 		}else{
@@ -891,11 +1008,13 @@ int main(int argc, const char** argv){
 		status = EXIT_FAILURE;
 		goto error;
 	}
+	/*
 	glc = ExGetCurrentOpenGLContext();
 	assert(glc);
 	if(usingopencl){
 		clc = createCLContext(glc, &deviceid);
 	}
+	*/
 
 	/*	*/
 	ExShowWindow(window);
@@ -957,10 +1076,6 @@ int main(int argc, const char** argv){
 		}
 	}
 
-
-	if(usingopencl){
-		createCLProgram(clc, deviceid, clfrag, &uniform[0]);
-	}
 
 
 
@@ -1244,6 +1359,12 @@ int main(int argc, const char** argv){
 	privatefprintf("glslview is terminating.\n");
 	glslview_terminate();
 
+	if(usingopencl){
+		clReleaseMemObject(clmemframetexture);
+		clReleaseProgram(clprogram);
+		clReleaseCommandQueue(clqueue);
+		clReleaseContext(clcontext);
+	}
 
 	/*	Release OpenGL resources.	*/
 	if(ExGetCurrentOpenGLContext()){
