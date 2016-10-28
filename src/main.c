@@ -564,6 +564,84 @@ void glslview_terminate(void){
 }
 
 
+
+
+const char* get_cl_error_str(unsigned int errorcode){
+	static const char* errorString[] = {
+		"CL_SUCCESS",
+		"CL_DEVICE_NOT_FOUND",
+		"CL_DEVICE_NOT_AVAILABLE",
+		"CL_COMPILER_NOT_AVAILABLE",
+		"CL_MEM_OBJECT_ALLOCATION_FAILURE",
+		"CL_OUT_OF_RESOURCES",
+		"CL_OUT_OF_HOST_MEMORY",
+		"CL_PROFILING_INFO_NOT_AVAILABLE",
+		"CL_MEM_COPY_OVERLAP",
+		"CL_IMAGE_FORMAT_MISMATCH",
+		"CL_IMAGE_FORMAT_NOT_SUPPORTED",
+		"CL_BUILD_PROGRAM_FAILURE",
+		"CL_MAP_FAILURE",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"CL_INVALID_VALUE",
+		"CL_INVALID_DEVICE_TYPE",
+		"CL_INVALID_PLATFORM",
+		"CL_INVALID_DEVICE",
+		"CL_INVALID_CONTEXT",
+		"CL_INVALID_QUEUE_PROPERTIES",
+		"CL_INVALID_COMMAND_QUEUE",
+		"CL_INVALID_HOST_PTR",
+		"CL_INVALID_MEM_OBJECT",
+		"CL_INVALID_IMAGE_FORMAT_DESCRIPTOR",
+		"CL_INVALID_IMAGE_SIZE",
+		"CL_INVALID_SAMPLER",
+		"CL_INVALID_BINARY",
+		"CL_INVALID_BUILD_OPTIONS",
+		"CL_INVALID_PROGRAM",
+		"CL_INVALID_PROGRAM_EXECUTABLE",
+		"CL_INVALID_KERNEL_NAME",
+		"CL_INVALID_KERNEL_DEFINITION",
+		"CL_INVALID_KERNEL",
+		"CL_INVALID_ARG_INDEX",
+		"CL_INVALID_ARG_VALUE",
+		"CL_INVALID_ARG_SIZE",
+		"CL_INVALID_KERNEL_ARGS",
+		"CL_INVALID_WORK_DIMENSION",
+		"CL_INVALID_WORK_GROUP_SIZE",
+		"CL_INVALID_WORK_ITEM_SIZE",
+		"CL_INVALID_GLOBAL_OFFSET",
+		"CL_INVALID_EVENT_WAIT_LIST",
+		"CL_INVALID_EVENT",
+		"CL_INVALID_OPERATION",
+		"CL_INVALID_GL_OBJECT",
+		"CL_INVALID_BUFFER_SIZE",
+		"CL_INVALID_MIP_LEVEL",
+		"CL_INVALID_GLOBAL_WORK_SIZE",
+	};
+
+	/*	compute error index code. 	*/
+	const int errorCount = sizeof(errorString) / sizeof(errorString[0]);
+	const int index = -errorcode;
+
+	/*	return error string.	*/
+	return (index >= 0 && index < errorCount) ? errorString[index] : "Unspecified Error";
+}
+
 /**/
 cl_context createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device){
 	cl_int ciErrNum;
@@ -617,7 +695,7 @@ cl_context createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_
 	props[1] = platforms[nselectPlatform];
 	context = clCreateContext(props, nDevices, devices, NULL, NULL, &ciErrNum);
 	if(context == NULL){
-		/*	fprintf(stderr, "Failed to create OpenCL context. %d\n  [ %s ]", ciErrNum, get_cl_error_str(ciErrNum));	*/
+		fprintf(stderr, "Failed to create OpenCL context. %d\n  [ %s ]", ciErrNum, get_cl_error_str(ciErrNum));
 	}
 
 	if(device){
@@ -650,7 +728,7 @@ cl_program createProgram(cl_context context, unsigned int nDevices, cl_device_id
 	program = clCreateProgramWithSource(context, 1, (const char **)&source, NULL, &ciErrNum);
 
 	if(program == NULL || ciErrNum != CL_SUCCESS){
-		//fprintf(stderr, "Failed to create program %d %s\n", ciErrNum, get_cl_error_str(ciErrNum));
+		fprintf(stderr, "Failed to create program %d %s\n", ciErrNum, get_cl_error_str(ciErrNum));
 	}
 
 	ciErrNum = clBuildProgram(program, nDevices, device, NULL, NULL, NULL);
@@ -668,7 +746,7 @@ cl_program createProgram(cl_context context, unsigned int nDevices, cl_device_id
 	return program;
 }
 
-
+/**/
 cl_command_queue createcommandqueue(cl_context context, cl_device_id device){
 	cl_int error;
 	cl_command_queue queue;
@@ -677,9 +755,11 @@ cl_command_queue createcommandqueue(cl_context context, cl_device_id device){
 			device,
 			pro,
 			&error);
+	/**/
 	if(error != CL_SUCCESS){
 		fprintf(stderr, "Failed to create command queue . %d \n", error);
 	}
+
 	return queue;
 }
 
@@ -696,7 +776,7 @@ cl_context createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_
 	if(context == NULL){
 		return NULL;
 	}
-	queue = createcommandqueue(context, devices[0]);
+	queue = createcommandqueue(context, (*devices)[0]);
 
 
 	/*	*/
@@ -716,13 +796,18 @@ cl_program createCLProgram(cl_context context, unsigned int nNumDevices, cl_devi
 	cl_uint numKernelArgs;
 	char argname[256];
 	size_t argnamesize;
+	unsigned int width;
+	unsigned int height;
+
+
 	program = createProgram(context, nNumDevices, id, cfilename);
 	assert(program);
 	kernel = clCreateKernel(program, "main", &err);
+	if(err != CL_SUCCESS){
+		fprintf(stderr, "Failed to create kernel %d %s\n", err, get_cl_error_str(err));
+	}
 
-	unsigned int image;
-	unsigned int width;
-	unsigned int height;
+
 
 
 	/*	framebuffer image view attributes information.	*/
@@ -761,7 +846,7 @@ cl_program createCLProgram(cl_context context, unsigned int nNumDevices, cl_devi
 
 	/*	*/
 	for(x = 0; x < sizeof(textures) / sizeof(textures[0]); x++){
-		if(ExIsTexture( &textures[x].texture)){
+		if(ExIsTexture( &textures[x] )){
 			texmem = clCreateFromGLTexture((cl_context)context,
 					CL_MEM_READ_ONLY,
 					textures[x].target,
