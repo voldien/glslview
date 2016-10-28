@@ -109,6 +109,14 @@ pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap defaul
 
 
 
+void glslview_default_init(void){
+	glslview_resize_screen = glslview_resize_screen_gl;
+	glslview_displaygraphic = glslview_displaygraphic_gl;
+	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
+	glslview_update_uniforms = glslview_update_uniforms_gl;
+	glslview_swapbuffer = ExSwapBuffers;
+}
+
 /**/
 int privatefprintf(const char* format,...){
 	va_list larg;
@@ -526,8 +534,8 @@ int main(int argc, const char** argv){
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
 
-	UniformLocation uniform[32] = {0};	/*	uniform.	*/
-	ExShader shader[32] = {0};						/*	*/
+	UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
+	ExShader shader[32] = {{0}};						/*	*/
 	unsigned int numShaderPass = 0;					/*	*/
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
@@ -565,6 +573,9 @@ int main(int argc, const char** argv){
 		fprintf(stderr, "No argument.\n");
 		return EXIT_FAILURE;
 	}
+
+	/*	Init values that has to been set in order for the software to work.	*/
+	glslview_default_init();
 
 	/*	*/
 	if(private_glslview_readargument(argc, argv, 0) == 2){

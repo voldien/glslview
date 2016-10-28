@@ -87,6 +87,8 @@ pupdate_update_uniforms glslview_update_uniforms;
 
 extern const float quad[4][3];
 
+
+void glslview_default_init(void);
 /**
  *
  */
