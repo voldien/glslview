@@ -49,6 +49,10 @@ typedef struct uniform_location_t{
 	unsigned int tex13;			/*	texture 13.	*/
 	unsigned int tex14;			/*	texture 14.	*/
 	unsigned int tex15;			/*	texture 15.	*/
+	unsigned int mvp;			/*	model view projection matrix.	*/
+	unsigned int model;			/*	world space matrix.	*/
+	unsigned int perspective;	/*	perspective matrix.	*/
+	unsigned int view;			/*	camera space matrix.	*/
 }UniformLocation;
 
 
@@ -73,7 +77,7 @@ typedef struct uniform_location_t{
 
 
 
-typedef void (pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
+typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
@@ -84,7 +88,7 @@ presize_screen glslview_resize_screen;
 pupdate_shader_uniform glslview_update_shader_uniform;
 pdisplaygraphic glslview_displaygraphic;
 pupdate_update_uniforms glslview_update_uniforms;
-
+pswapbufferfunctype glslview_swapbuffer;
 extern const float quad[4][3];
 
 /**
