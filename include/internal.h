@@ -33,22 +33,27 @@ typedef struct uniform_location_t{
 	unsigned int offset;		/*	offset.	*/
 	unsigned int backbuffer;	/*	previous buffer.	*/
 	unsigned int stdin;			/*	stdin data.	*/
-	unsigned int tex0;			/*	texture 0.	*/
-	unsigned int tex1;			/*	texture 1.	*/
-	unsigned int tex2;			/*	texture 2.	*/
-	unsigned int tex3;			/*	texture 3.	*/
-	unsigned int tex4;			/*	texture 4.	*/
-	unsigned int tex5;			/*	texture 5.	*/
-	unsigned int tex6;			/*	texture 6.	*/
-	unsigned int tex7;			/*	texture 7.	*/
-	unsigned int tex8;			/*	texture 8.	*/
-	unsigned int tex9;			/*	texture 9.	*/
-	unsigned int tex10;			/*	texture 10.	*/
-	unsigned int tex11;			/*	texture 11.	*/
-	unsigned int tex12;			/*	texture 12.	*/
-	unsigned int tex13;			/*	texture 13.	*/
-	unsigned int tex14;			/*	texture 14.	*/
-	unsigned int tex15;			/*	texture 15.	*/
+	union{
+		struct{
+			unsigned int tex0;			/*	texture 0.	*/
+			unsigned int tex1;			/*	texture 1.	*/
+			unsigned int tex2;			/*	texture 2.	*/
+			unsigned int tex3;			/*	texture 3.	*/
+			unsigned int tex4;			/*	texture 4.	*/
+			unsigned int tex5;			/*	texture 5.	*/
+			unsigned int tex6;			/*	texture 6.	*/
+			unsigned int tex7;			/*	texture 7.	*/
+			unsigned int tex8;			/*	texture 8.	*/
+			unsigned int tex9;			/*	texture 9.	*/
+			unsigned int tex10;			/*	texture 10.	*/
+			unsigned int tex11;			/*	texture 11.	*/
+			unsigned int tex12;			/*	texture 12.	*/
+			unsigned int tex13;			/*	texture 13.	*/
+			unsigned int tex14;			/*	texture 14.	*/
+			unsigned int tex15;			/*	texture 15.	*/
+		};
+		unsigned int tex[16];
+	};
 }UniformLocation;
 
 
