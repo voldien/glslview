@@ -18,7 +18,7 @@
 */
 #include<ELT/elt.h>
 #include<ELT/graphic.h>
-//#include"internal.h"
+#include"internal.h"
 
 #include<GL/gl.h>
 #include<GL/glext.h>
@@ -268,7 +268,7 @@ const char* vertexpolygone = ""
 
 
 /**/
-static const float quad[4][3] = {
+const float quad[4][3] = {
 		{-1.0f, -1.0f, 0.0f},
 		{-1.0f, 1.0f, 0.0f},
 		{ 1.0f, -1.0f, 0.0f},
@@ -307,8 +307,8 @@ unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 unsigned int usepolygone = 0;
 Mesh mesh;
-typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
-pswapbufferfunctype pswapbuffer;					/*	Function pointer for swap default framebuffer.	*/
+
+
 
 
 
@@ -351,38 +351,6 @@ const char* glslview_getVersion(void){
 	return COMPILED_VERSION(GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
 }
 
-/**
- *	GLSL uniform data struct.
- */
-typedef struct uniform_location_t{
-	unsigned int time;			/*	time in seconds as float.	*/
-	unsigned int resolution;	/*	resolution. */
-	unsigned int deltatime;		/*	delta time.	*/
-	unsigned int mouse;			/*	mouse.	*/
-	unsigned int offset;		/*	offset.	*/
-	unsigned int backbuffer;	/*	previous buffer.	*/
-	unsigned int stdin;			/*	stdin data.	*/
-	unsigned int tex0;			/*	texture 0.	*/
-	unsigned int tex1;			/*	texture 1.	*/
-	unsigned int tex2;			/*	texture 2.	*/
-	unsigned int tex3;			/*	texture 3.	*/
-	unsigned int tex4;			/*	texture 4.	*/
-	unsigned int tex5;			/*	texture 5.	*/
-	unsigned int tex6;			/*	texture 6.	*/
-	unsigned int tex7;			/*	texture 7.	*/
-	unsigned int tex8;			/*	texture 8.	*/
-	unsigned int tex9;			/*	texture 9.	*/
-	unsigned int tex10;			/*	texture 10.	*/
-	unsigned int tex11;			/*	texture 11.	*/
-	unsigned int tex12;			/*	texture 12.	*/
-	unsigned int tex13;			/*	texture 13.	*/
-	unsigned int tex14;			/*	texture 14.	*/
-	unsigned int tex15;			/*	texture 15.	*/
-	unsigned int mvp;			/*	model view projection matrix.	*/
-	unsigned int model;			/*	world space matrix.	*/
-	unsigned int perspective;	/*	perspective matrix.	*/
-	unsigned int view;			/*	camera space matrix.	*/
-}UniformLocation;
 
 /**/
 static int private_glslview_readargument(int argc, const char** argv, int pre){
@@ -462,17 +430,30 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					if(strcmp(optarg, "opengl") == 0){
 						rendererapi = EX_OPENGL;
 						privatefprintf("Set rendering API to OpenGL.\n");
+
 					}
 					if(strcmp(optarg, "openglcore") == 0){
 						rendererapi = EX_OPENGL_CORE;
 						privatefprintf("Set rendering API to OpenGL core.\n");
+						/*	TODO set it for all the opengl as well.	*/
+						glslview_resize_screen = glslview_resize_screen_gl;
+						glslview_displaygraphic = glslview_displaygraphic_gl;
+						glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
+						glslview_update_uniforms = glslview_update_uniforms_gl;
+						glslview_swapbuffer = ExSwapBuffers;
 					}
 					else if(strcmp(optarg, "opengles") == 0){
 						rendererapi = EX_OPENGLES;
 						privatefprintf("Set rendering API to OpenGL-ES.\n");
+
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
 						rendererapi = EX_VULKAN;
+						glslview_resize_screen = glslview_resize_screen_vk;
+						glslview_displaygraphic = glslview_displaygraphic_vk;
+						glslview_update_shader_uniform = glslview_update_shader_uniform_vk;
+						glslview_update_uniforms = glslview_update_uniforms_vk;
+						glslview_swapbuffer = ExSwapBuffers;
 						privatefprintf("Set rendering API to Vulkan.\n");
 					}
 				}
@@ -747,152 +728,6 @@ void glslview_catchSig(int signal){
 }
 
 
-/**
- *
- *
- */
-void glslview_update_shader_uniform(UniformLocation* uniform, ExShader* shader, int width, int height){
-	float res[2];
-
-	privatefprintf("----------- fetching uniforms index location ----------\n");
-	uniform->time = glGetUniformLocation(shader->program, "time");
-	uniform->deltatime = glGetUniformLocation(shader->program, "deltatime");
-	uniform->resolution = glGetUniformLocation(shader->program, "resolution");
-	uniform->mouse = glGetUniformLocation(shader->program, "mouse");
-	uniform->offset = glGetUniformLocation(shader->program, "offset");
-	uniform->stdin = glGetUniformLocation(shader->program, "stdin");
-	uniform->tex0 = glGetUniformLocation(shader->program, "tex0");
-	uniform->tex1 = glGetUniformLocation(shader->program, "tex1");
-	uniform->tex2 = glGetUniformLocation(shader->program, "tex2");
-	uniform->tex3 = glGetUniformLocation(shader->program, "tex3");
-	uniform->tex4 = glGetUniformLocation(shader->program, "tex4");
-	uniform->tex5 = glGetUniformLocation(shader->program, "tex5");
-	uniform->tex6 = glGetUniformLocation(shader->program, "tex6");
-	uniform->tex7 = glGetUniformLocation(shader->program, "tex7");
-	uniform->tex8 = glGetUniformLocation(shader->program, "tex8");
-	uniform->tex9 = glGetUniformLocation(shader->program, "tex9");
-	uniform->tex10 = glGetUniformLocation(shader->program, "tex10");
-	uniform->tex11 = glGetUniformLocation(shader->program, "tex11");
-	uniform->tex12 = glGetUniformLocation(shader->program, "tex12");
-	uniform->tex13 = glGetUniformLocation(shader->program, "tex13");
-	uniform->tex14 = glGetUniformLocation(shader->program, "tex14");
-	uniform->tex15 = glGetUniformLocation(shader->program, "tex15");
-	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
-	uniform->mvp = glGetUniformLocation(shader->program, "mvp");
-	uniform->model = glGetUniformLocation(shader->program, "model");
-	uniform->view = glGetUniformLocation(shader->program, "view");
-	uniform->perspective = glGetUniformLocation(shader->program, "perspective");
-
-
-	debugprintf("time %d\n", uniform->time);
-	debugprintf("deltatime %d\n", uniform->deltatime);
-	debugprintf("resolution %d\n", uniform->resolution);
-	debugprintf("mouse %d\n", uniform->mouse);
-	debugprintf("offset %d\n", uniform->offset);
-	debugprintf("stdin %d\n", uniform->stdin);
-	debugprintf("tex0 %d\n", uniform->tex0);
-	debugprintf("tex1 %d\n", uniform->tex1);
-	debugprintf("tex2 %d\n", uniform->tex2);
-	debugprintf("tex3 %d\n", uniform->tex3);
-	debugprintf("tex4 %d\n", uniform->tex4);
-	debugprintf("tex5 %d\n", uniform->tex5);
-	debugprintf("tex6 %d\n", uniform->tex6);
-	debugprintf("tex7 %d\n", uniform->tex7);
-	debugprintf("tex8 %d\n", uniform->tex8);
-	debugprintf("tex9 %d\n", uniform->tex9);
-	debugprintf("tex10 %d\n", uniform->tex10);
-	debugprintf("tex11 %d\n", uniform->tex11);
-	debugprintf("tex12 %d\n", uniform->tex12);
-	debugprintf("tex13 %d\n", uniform->tex13);
-	debugprintf("tex14 %d\n", uniform->tex14);
-	debugprintf("tex15 %d\n", uniform->tex15);
-	debugprintf("mvp %d\n", uniform->mvp);
-	debugprintf("model %d\n", uniform->model);
-	debugprintf("view %d\n", uniform->view);
-	debugprintf("perspective %d\n", uniform->perspective);
-	debugprintf("backbuffer %d\n", uniform->backbuffer);
-
-	glUseProgram(shader->program);
-
-	res[0] = width;
-	res[1] = height;
-	glUniform2fv(uniform->resolution, 1, &res[0]);
-
-	/**/
-	privatefprintf("----------- Assigning texture sampler index ----------\n");
-	glUniform1i(uniform->tex0, 0);
-	glUniform1i(uniform->tex1, 1);
-	glUniform1i(uniform->tex2, 2);
-	glUniform1i(uniform->tex3, 3);
-	glUniform1i(uniform->tex4, 4);
-	glUniform1i(uniform->tex5, 5);
-	glUniform1i(uniform->tex6, 6);
-	glUniform1i(uniform->tex7, 7);
-	glUniform1i(uniform->tex8, 8);
-	glUniform1i(uniform->tex9, 9);
-	glUniform1i(uniform->tex10, 10);
-	glUniform1i(uniform->tex11, 11);
-	glUniform1i(uniform->tex12, 12);
-	glUniform1i(uniform->tex13, 13);
-	glUniform1i(uniform->tex14, 14);
-	glUniform1i(uniform->tex15, 15);
-	glUniform1i(uniform->backbuffer, numTextures);
-
-
-	/*	Create backbuffer.	*/
-	if(uniform->backbuffer != -1){
-		if(ExIsTexture(&fbackbuffertex)){
-			ExDeleteTexture(&fbackbuffertex);
-		}
-		ExCreateTexture(&fbackbuffertex, GL_TEXTURE_2D,  0, ftexinternalformat, width, height, 0, ftexformat, ftextype, NULL);
-		privatefprintf("Created backbuffer.	\n");
-	}else{
-		if(ExIsTexture(&fbackbuffertex)){
-			ExDeleteTexture(&fbackbuffertex);
-		}
-	}
-
-}
-
-/**
- *
- *
- */
-void glslview_resize_screen(ExEvent* event, UniformLocation* uniform, ExShader* shader, ExTexture* ftexture){
-	float resolution[2] = {event->size.width, event->size.height};
-	glViewport(0, 0, event->size.width, event->size.height);
-	glUniform2fv(uniform->resolution, 1, &resolution[0]);
-	privatefprintf("%dx%d.\n", event->size.width, event->size.height);
-
-
-	if(ftexture){
-		if(ExIsTexture(&fbackbuffertex)){
-			ExDeleteTexture(&fbackbuffertex);
-			ExCreateTexture(&fbackbuffertex, GL_TEXTURE_2D,  0, ftexinternalformat, event->size.width, event->size.height, 0, ftexformat, ftextype, NULL);
-		}
-	}
-}
-
-/**
- *
- */
-void glslview_displaygraphic(ExWin drawable){
-
-
-	if(usepolygone){
-		glBindVertexArray(mesh.vao);
-		glDrawElements(GL_TRIANGLES, mesh.indicescount, GL_UNSIGNED_INT, NULL);
-		glBindVertexArray(0);
-	}
-	else{
-		/*	draw quad.	*/
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
-	}
-	/**/
-	pswapbuffer(drawable);
-}
-
-
 void glslview_terminate(void){
 
 }
@@ -908,11 +743,15 @@ int main(int argc, const char** argv){
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
 
-	struct uniform_location_t uniform[32] = {{0}};	/*	uniform.	*/
-	ExShader shader[32] = {{0}};						/*	*/
+
+	UniformLocation uniform[32] = {0};	/*	uniform.	*/
+	ExShader shader[32] = {0};						/*	*/
+
 	unsigned int numShaderPass = 0;					/*	*/
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
+
+	float ttime;
 
 	ExSize size;								/*	*/
 	ExChar title[512];							/*	*/
@@ -932,7 +771,7 @@ int main(int argc, const char** argv){
 	hpmquatf camrotate;							/*	camera rotation as a quaternion.	*/
 	hpmquatf rotate;
 
-	pswapbuffer = ExSwapBuffers;				/*	TODO resolve for EGL or GLX/WGL.	*/
+
 
 
 
@@ -1246,27 +1085,14 @@ int main(int argc, const char** argv){
 			else if(ret == 0){
 				if(visable || renderInBackground){
 					for(x = 0; x < numShaderPass; x++){
-						glUseProgram(shader[x].program);
 
-						if(uniform[x].time != -1){
-							float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
-							glUniform1fv(uniform[x].time,  1, &time);
-						}
+						ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
 						deltatime = ExGetHiResTime() - pretime;
 						pretime = ExGetHiResTime();
-						if(uniform[x].deltatime != -1){
-							glUniform1f(uniform[x].deltatime, (float)((float)deltatime / (float)1E9));
-						}
 
-						/*	*/
-						if(use_stdin_as_buffer){
-							int buffer;
-							if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
-								glUniform1iv(uniform[x].stdin, sizeof(GLint), (const GLint*)&buffer);
-							}
-						}
+						glUseProgram(shader[x].program);
 
-
+						glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
 						glslview_displaygraphic(drawable);
 
 
@@ -1328,15 +1154,6 @@ int main(int argc, const char** argv){
 
 			if(visable || renderInBackground){
 				for(x = 0; x < numShaderPass; x++){
-					float time = (float)(( ExGetHiResTime() - private_start) / 1E9);
-					glUniform1fv(uniform[x].time,  1, &time);
-					/**/
-					if(use_stdin_as_buffer){
-						int buffer;
-						if(read(STDIN_FILENO, (void*)&buffer, stdin_buffer_size) > 0){
-							glUniform1iv(uniform[x].stdin, 4, (const GLint*)&buffer);
-						}
-					}
 
 					if(uniform[x].mvp != -1){
 						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, mvp);
@@ -1345,21 +1162,22 @@ int main(int argc, const char** argv){
 						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, model);
 					}
 
+					glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
+
 					glslview_displaygraphic(drawable);
 
-					/*	*/
 					if(uniform[x].backbuffer != -1){
 						glActiveTexture(GL_TEXTURE0 + numTextures);
 						glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
 						glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
 					}
+				}
 
-					glClear(GL_COLOR_BUFFER_BIT);
+				glClear(GL_COLOR_BUFFER_BIT);
+			}/*	render passes	*/
 
-				}/*	render passes	*/
 
-			}/*	render condition.	*/
-		}
+		}/*	render condition.	*/
 
 	}/*	End of main while loop.	*/
 
