@@ -67,20 +67,7 @@ void initmatrix(void){
 
 }
 
-typedef struct mesh_object_t{
-	unsigned int vbo;
-	unsigned int ibo;
-	unsigned int vao;
-	unsigned int indicescount;
-	unsigned int verticescount;
-	union{
-		struct{
-			hpmvec3f center;
-			hpmvec3f size;
-		};
-		hpmvec3f aabb[2];
-	};
-}Mesh;
+
 
 void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	const struct aiScene* scene;
@@ -215,6 +202,9 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glBindVertexArray(0);
 	pmesh->indicescount = totalIndicesCount;
 	pmesh->verticescount = totalVerticesCount;
+	pmesh->vao = vao;
+	pmesh->vbo = vbo;
+	pmesh->ibo = ibo;
 
 
 	/*	*/
@@ -753,6 +743,7 @@ int main(int argc, const char** argv){
 
 	float ttime;
 
+	ExPoint priorlocation;
 	ExSize size;								/*	*/
 	ExChar title[512];							/*	*/
 
@@ -896,12 +887,6 @@ int main(int argc, const char** argv){
 
 
 
-
-
-
-
-
-
 	/*	generate vertex array for quad.	*/
 	privatefprintf("----------- constructing rendering quad. ----------\n");
 	ExGenVertexArrays(1, &vao);
@@ -917,6 +902,9 @@ int main(int argc, const char** argv){
 	/*	*/
 	glBindVertexArray(0);
 
+
+
+
 	/*	*/
 	drawable = ExGetCurrentGLDrawable();
 	glDisable(GL_DEPTH_TEST);
@@ -929,11 +917,10 @@ int main(int argc, const char** argv){
 	ExGetWindowSizev(window, &size);
 	glViewport(0, 0, size.width, size.height);
 
+
+
 	/*	*/
-
 	glBindVertexArray(vao);
-
-
 
 
 	/*	*/
@@ -1007,6 +994,10 @@ int main(int argc, const char** argv){
 				float mouse[2] = {location.x , -location.y };
 				for(x = 0; x < numShaderPass; x++){
 					glUniform2fv(uniform[x].mouse, 1, &mouse[0]);
+				}
+
+				if(ExIsKeyDown(EXK_End)){
+
 				}
 			}
 
@@ -1092,6 +1083,13 @@ int main(int argc, const char** argv){
 
 						glUseProgram(shader[x].program);
 
+						if(uniform[x].mvp != -1){
+							glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, mvp);
+						}
+						if(uniform[x].model != -1){
+							glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, model);
+						}
+
 						glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
 						glslview_displaygraphic(drawable);
 
@@ -1163,7 +1161,6 @@ int main(int argc, const char** argv){
 					}
 
 					glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-
 					glslview_displaygraphic(drawable);
 
 					if(uniform[x].backbuffer != -1){

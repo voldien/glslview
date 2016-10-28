@@ -21,6 +21,7 @@
 
 #include<ELT/elt.h>
 #include<ELT/graphic.h>
+#include<hpm/hpm.h>
 
 /**
  *
@@ -55,7 +56,20 @@ typedef struct uniform_location_t{
 	unsigned int view;			/*	camera space matrix.	*/
 }UniformLocation;
 
-
+typedef struct mesh_object_t{
+	unsigned int vbo;
+	unsigned int ibo;
+	unsigned int vao;
+	unsigned int indicescount;
+	unsigned int verticescount;
+	union{
+		struct{
+			hpmvec3f center;
+			hpmvec3f size;
+		};
+		hpmvec3f aabb[2];
+	};
+}Mesh;
 
 
 
@@ -147,6 +161,10 @@ extern const int numTextures;
 extern unsigned int nextTex;						/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;						/*	*/
+extern unsigned int usepolygone;
+extern Mesh mesh;
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
+
+
 
 #endif

@@ -116,9 +116,16 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, ExSha
 }
 
 void glslview_displaygraphic_gl(ExWin drawable){
-	/*	draw quad.	*/
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
 
+	if(usepolygone){
+		glBindVertexArray(mesh.vao);
+		glDrawElements(GL_TRIANGLES, mesh.indicescount, GL_UNSIGNED_INT, NULL);
+		glBindVertexArray(0);
+	}
+	else{
+		/*	draw quad.	*/
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
+	}
 	/**/
 	glslview_swapbuffer(drawable);
 }
