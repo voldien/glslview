@@ -103,7 +103,6 @@ unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
-typedef void (ELTAPIFASTENTRY *pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
 
@@ -821,6 +820,10 @@ int main(int argc, const char** argv){
 		}
 
 
+
+		ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
+		deltatime = ExGetHiResTime() - pretime;
+		pretime = ExGetHiResTime();
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
 			fd_set readfd;
@@ -836,9 +839,7 @@ int main(int argc, const char** argv){
 				if(visable || renderInBackground){
 					for(x = 0; x < numShaderPass; x++){
 
-						ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
-						deltatime = ExGetHiResTime() - pretime;
-						pretime = ExGetHiResTime();
+
 
 						glUseProgram(shader[x].program);
 
@@ -903,10 +904,6 @@ int main(int argc, const char** argv){
 
 			if(visable || renderInBackground){
 				for(x = 0; x < numShaderPass; x++){
-
-					ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
-					deltatime = ExGetHiResTime() - pretime;
-					pretime = ExGetHiResTime();
 
 					glUseProgram(shader[x].program);
 
