@@ -91,6 +91,7 @@ int ifd = -1;									/*	inotify file descriptor.*/
 int wd = -1;									/*	inotify watch directory.	*/
 char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
+unsigned int numShaderPass = 0;
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
 unsigned int fbo = 0;							/*	*/
 unsigned int ftextype = GL_FLOAT;
@@ -103,7 +104,12 @@ unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
-pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
+
+presize_screen glslview_resize_screen = NULL;
+pupdate_shader_uniform glslview_update_shader_uniform = NULL;
+pdisplaygraphic glslview_displaygraphic = NULL;
+pupdate_update_uniforms glslview_update_uniforms = NULL;
+pswapbufferfunctype glslview_swapbuffer	= NULL;					/*	Function pointer for swap default framebuffer.	*/
 
 
 
@@ -536,7 +542,6 @@ int main(int argc, const char** argv){
 
 	UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
 	ExShader shader[32] = {{0}};						/*	*/
-	unsigned int numShaderPass = 0;					/*	*/
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
 
@@ -848,25 +853,8 @@ int main(int argc, const char** argv){
 			}
 			else if(ret == 0){
 				if(visable || renderInBackground){
-					for(x = 0; x < numShaderPass; x++){
-
-
-
-						glUseProgram(shader[x].program);
-
-						glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-						glslview_displaygraphic(drawable);
-
-						if(uniform[x].backbuffer != -1){
-							glActiveTexture(GL_TEXTURE0 + numTextures);
-							glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-							glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
-						}
-					}
-
-					glClear(GL_COLOR_BUFFER_BIT);
+					glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
 				}
-
 			}else{
 				struct inotify_event ionevent;
 
@@ -914,21 +902,7 @@ int main(int argc, const char** argv){
 		else{
 
 			if(visable || renderInBackground){
-				for(x = 0; x < numShaderPass; x++){
-
-					glUseProgram(shader[x].program);
-
-					glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-					glslview_displaygraphic(drawable);
-
-					if(uniform[x].backbuffer != -1){
-						glActiveTexture(GL_TEXTURE0 + numTextures);
-						glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-						glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
-					}
-				}
-
-				glClear(GL_COLOR_BUFFER_BIT);
+				glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
 			}/*	render passes	*/
 
 

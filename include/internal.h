@@ -79,12 +79,14 @@ typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExSha
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
 typedef void (*pdisplaygraphic)(ExWin drawable);
 
+/**/
+extern presize_screen glslview_resize_screen;
+extern pupdate_shader_uniform glslview_update_shader_uniform;
+extern pdisplaygraphic glslview_displaygraphic;
+extern pupdate_update_uniforms glslview_update_uniforms;
+extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
-presize_screen glslview_resize_screen;
-pupdate_shader_uniform glslview_update_shader_uniform;
-pdisplaygraphic glslview_displaygraphic;
-pupdate_update_uniforms glslview_update_uniforms;
-
+/**/
 extern const float quad[4][3];
 
 
@@ -114,6 +116,8 @@ void glslview_displaygraphic_gl(ExWin drawable);
 void glslview_displaygraphic_vk(ExWin drawable);
 
 
+void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* location, float ttime, float deltatime);
+
 
 
 
@@ -134,6 +138,7 @@ extern int ifd;										/*	inotify file descriptor.*/
 extern int wd;										/*	inotify watch directory.	*/
 extern char* inotifybuf;							/*	*/
 extern unsigned int numFragPaths;					/*	*/
+extern unsigned int numShaderPass;
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
 extern unsigned int fbo;							/*	*/
 extern unsigned int ftextype;
@@ -145,6 +150,6 @@ extern const int numTextures;
 extern unsigned int nextTex;						/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;						/*	*/
-extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
+
 
 #endif

@@ -145,3 +145,27 @@ void glslview_update_uniforms_gl(UniformLocation* uniform, ExShader* shader, flo
 	}
 
 }
+
+
+
+
+void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* uniform, float ttime, float deltatime){
+	int x;
+
+	for(x = 0; x < numShaderPass; x++){
+
+		glUseProgram(shader[x].program);
+
+		glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
+		glslview_displaygraphic(drawable);
+
+		if(uniform[x].backbuffer != -1){
+			glActiveTexture(GL_TEXTURE0 + numTextures);
+			glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
+			glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
+		}
+	}
+	glClear(GL_COLOR_BUFFER_BIT);
+
+}
+
