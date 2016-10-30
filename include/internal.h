@@ -21,6 +21,7 @@
 
 #include<ELT/elt.h>
 #include<ELT/graphic.h>
+#include<CL/cl.h>
 
 /**
  *
@@ -126,6 +127,21 @@ extern int privatefprintf(const char* format,...);
 extern int debugprintf(const char* format,...);
 
 
+
+
+
+
+/**/
+cl_context glslview_createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device);
+/*	Create OpenCL program.	*/
+cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_device_id* device, const char* cfilename);
+/**/
+cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id device);
+cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices);
+cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
+void glslview_renderclframe(cl_command_queue queue, cl_kernel kernel, unsigned int w, unsigned int h);
+
+
 extern ExWin window;								/*	Window.	*/
 extern ExBoolean fullscreen ;						/*	Set window fullscreen.	*/
 extern ExBoolean verbose;							/*	enable verbose.	*/
@@ -147,7 +163,18 @@ extern ExTexture textures[8];						/*	*/
 extern const int numTextures;
 extern unsigned int nextTex;						/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
-extern int stdin_buffer_size;						/*	*/
+extern int stdin_buffer_size;
+/*	Opencl.	*/
+extern unsigned int usingopencl;					/*	*/
+extern cl_context clcontext;							/*	*/
+extern unsigned int ncldevices;
+extern cl_device_id* cldevice;							/*	*/
+extern cl_command_queue clqueue;
+extern cl_program clprogram;							/*	*/
+extern cl_kernel clkernel;								/*	*/
+extern cl_mem clmemframetexture;						/*	*/
+extern ExTexture clframetexture;
+/*	*/
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
 #endif

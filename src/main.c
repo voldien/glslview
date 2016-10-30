@@ -22,6 +22,8 @@
 
 #include<GL/gl.h>
 #include<GL/glext.h>
+#include<CL/cl.h>
+#include<CL/cl_gl.h>
 #include<regex.h>
 
 #include<getopt.h>
@@ -42,8 +44,7 @@
  */
 //#include<hpm/hpm.h>
 //#include<assimp/cimport.h>
-#include<CL/cl.h>
-#include<CL/cl_gl.h>
+
 
 #ifndef GLSLVIEW_MAJOR_VERSION
 	#define GLSLVIEW_MAJOR_VERSION	0
@@ -111,20 +112,21 @@ unsigned int ftexinternalformat = GL_RGBA;
 unsigned int ftexformat = GL_RGBA;
 ExTexture fbackbuffertex = {0};					/*	framebuffer texture for backbuffer uniform variable.	*/
 ExTexture textures[8] = {{0}};					/*	*/
-ExTexture clframetexture;
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
+/*	opencl	*/
 unsigned int usingopencl = 0;					/*	*/
-cl_context clcontext;							/*	*/
-unsigned int ncldevices;
-cl_device_id* cldevice;							/*	*/
-cl_command_queue clqueue;
-cl_program clprogram;							/*	*/
-cl_kernel clkernel;								/*	*/
-cl_mem clmemframetexture;						/*	*/
+cl_context clcontext = 0;						/*	*/
+unsigned int ncldevices = 0;
+cl_device_id* cldevice = NULL;					/*	*/
+cl_command_queue clqueue = 0;
+cl_program clprogram = 0;						/*	*/
+cl_kernel clkernel = 0;							/*	*/
+cl_mem clmemframetexture = 0;					/*	*/
+ExTexture clframetexture = {0};					/*	*/
 
 typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 
@@ -175,8 +177,8 @@ const char* glslview_getVersion(void){
 
 
 /*	TODO relocate later!	*/
-extern cl_context createCLContext(ExOpenGLContext shared, unsigned int* nNumDevices, cl_device_id** id);
-extern cl_program createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
+extern cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* nNumDevices, cl_device_id** id);
+extern cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
 
 /**/
 static int private_glslview_readargument(int argc, const char** argv, int pre){
@@ -314,9 +316,10 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					privatefprintf("shader file %s\n", optarg);
 				}
 				break;
-			case 'c':	/*	TODO create opencl context.	*/
-				usingopencl = 1;
+			case 'c':
 				if(optarg){
+					usingopencl = 1;
+				}else{
 
 				}
 				break;
@@ -422,14 +425,17 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 
 				inotifybuf = malloc(4096);
 			case 'c':
-				if(optarg){
+				if(optarg){	/*	Requires argument.	*/
 					if(clcontext == NULL){
-						clcontext = createCLContext(ExGetCurrentOpenGLContext(), &ncldevices, &cldevice);
+						clcontext = glslview_createCLContext(ExGetCurrentOpenGLContext(), &ncldevices, &cldevice);
 						if(clcontext == NULL){
 							exit(EXIT_FAILURE);
 						}
 					}
-					clprogram = createCLProgram(clcontext, ncldevices, cldevice, optarg, NULL);
+					clprogram = glslview_createCLProgram(clcontext, ncldevices, cldevice, optarg, NULL);
+					if(clprogram){
+						exit(EXIT_FAILURE);
+					}
 
 
 				}
@@ -566,303 +572,6 @@ void glslview_terminate(void){
 
 
 
-const char* get_cl_error_str(unsigned int errorcode){
-	static const char* errorString[] = {
-		"CL_SUCCESS",
-		"CL_DEVICE_NOT_FOUND",
-		"CL_DEVICE_NOT_AVAILABLE",
-		"CL_COMPILER_NOT_AVAILABLE",
-		"CL_MEM_OBJECT_ALLOCATION_FAILURE",
-		"CL_OUT_OF_RESOURCES",
-		"CL_OUT_OF_HOST_MEMORY",
-		"CL_PROFILING_INFO_NOT_AVAILABLE",
-		"CL_MEM_COPY_OVERLAP",
-		"CL_IMAGE_FORMAT_MISMATCH",
-		"CL_IMAGE_FORMAT_NOT_SUPPORTED",
-		"CL_BUILD_PROGRAM_FAILURE",
-		"CL_MAP_FAILURE",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-		"CL_INVALID_VALUE",
-		"CL_INVALID_DEVICE_TYPE",
-		"CL_INVALID_PLATFORM",
-		"CL_INVALID_DEVICE",
-		"CL_INVALID_CONTEXT",
-		"CL_INVALID_QUEUE_PROPERTIES",
-		"CL_INVALID_COMMAND_QUEUE",
-		"CL_INVALID_HOST_PTR",
-		"CL_INVALID_MEM_OBJECT",
-		"CL_INVALID_IMAGE_FORMAT_DESCRIPTOR",
-		"CL_INVALID_IMAGE_SIZE",
-		"CL_INVALID_SAMPLER",
-		"CL_INVALID_BINARY",
-		"CL_INVALID_BUILD_OPTIONS",
-		"CL_INVALID_PROGRAM",
-		"CL_INVALID_PROGRAM_EXECUTABLE",
-		"CL_INVALID_KERNEL_NAME",
-		"CL_INVALID_KERNEL_DEFINITION",
-		"CL_INVALID_KERNEL",
-		"CL_INVALID_ARG_INDEX",
-		"CL_INVALID_ARG_VALUE",
-		"CL_INVALID_ARG_SIZE",
-		"CL_INVALID_KERNEL_ARGS",
-		"CL_INVALID_WORK_DIMENSION",
-		"CL_INVALID_WORK_GROUP_SIZE",
-		"CL_INVALID_WORK_ITEM_SIZE",
-		"CL_INVALID_GLOBAL_OFFSET",
-		"CL_INVALID_EVENT_WAIT_LIST",
-		"CL_INVALID_EVENT",
-		"CL_INVALID_OPERATION",
-		"CL_INVALID_GL_OBJECT",
-		"CL_INVALID_BUFFER_SIZE",
-		"CL_INVALID_MIP_LEVEL",
-		"CL_INVALID_GLOBAL_WORK_SIZE",
-	};
-
-	/*	compute error index code. 	*/
-	const int errorCount = sizeof(errorString) / sizeof(errorString[0]);
-	const int index = -errorcode;
-
-	/*	return error string.	*/
-	return (index >= 0 && index < errorCount) ? errorString[index] : "Unspecified Error";
-}
-
-/**/
-cl_context createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device){
-	cl_int ciErrNum;
-	cl_context context;
-	cl_platform_id* platforms;
-	cl_device_id* devices = NULL;
-	cl_device_id curgldevice;
-	int x = 0;
-	size_t i;
-
-	/**/
-	cl_context_properties props[] = {
-			CL_CONTEXT_PLATFORM, (cl_context_properties)NULL,
-			CL_GL_CONTEXT_KHR,   (cl_context_properties)shared,
-			CL_GLX_DISPLAY_KHR,     (cl_context_properties)ExGetDisplay(),
-			0
-	};
-
-	unsigned int nDevices = 0;
-	unsigned int nPlatforms = 0;
-	unsigned int nselectPlatform = 0;
-
-	/*	get platform id.	*/
-	ciErrNum = clGetPlatformIDs(0, NULL, &nPlatforms);
-	platforms = malloc(sizeof(*platforms) * nPlatforms);
-	ciErrNum = clGetPlatformIDs(nPlatforms, platforms, NULL);
-
-	/*	iterate */
-	for(x = 0; x < nPlatforms; x++){
-		props[1] = (cl_context_properties)platforms[x];
-		size_t bytes = 0;
-
-		/*	queuring how much bytes we need to read	*/
-		clGetGLContextInfoKHR(props, CL_DEVICES_FOR_GL_CONTEXT_KHR, 0, NULL, &bytes);
-		clGetGLContextInfoKHR(props, CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR, 0, NULL, &bytes);
-
-		// allocating the mem
-		size_t devNum = bytes/sizeof(cl_device_id);
-		devices = (cl_device_id*)realloc(devices, bytes + nDevices * sizeof(cl_device_id));
-
-		/**/
-		clGetGLContextInfoKHR(props, CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR, bytes, &devices[nDevices], NULL);
-		nDevices += devNum;
-		/*	iterate over all devices	*/
-		for(i = 0; i < devNum; i++){
-		      /*	enumerating the devices for the type, names, CL_DEVICE_EXTENSIONS, etc	*/
-		}
-
-	}
-	/*	create context.	*/
-	props[1] = platforms[nselectPlatform];
-	context = clCreateContext(props, nDevices, devices, NULL, NULL, &ciErrNum);
-	if(context == NULL){
-		fprintf(stderr, "Failed to create OpenCL context. %d\n  [ %s ]", ciErrNum, get_cl_error_str(ciErrNum));
-	}
-
-	if(device){
-		*device = devices;
-	}
-	if(numDevices){
-		*numDevices = nDevices;
-	}
-
-	free(platforms);
-	return context;
-}
-
-
-/*	Create OpenCL program.	*/
-cl_program createProgram(cl_context context, unsigned int nDevices, cl_device_id* device, const char* cfilename){
-	cl_int ciErrNum;
-	cl_program program;
-	char* source;
-	FILE* f;
-	long int flen;
-	f = fopen(cfilename, "rb");
-	fseek(f, 0, SEEK_END);
-	flen = ftell(f);
-	fseek(f, SEEK_SET, 0);
-	source = (char*)malloc(flen);
-	fread(source, 1, flen, f);
-	fclose(f);
-
-	program = clCreateProgramWithSource(context, 1, (const char **)&source, NULL, &ciErrNum);
-
-	if(program == NULL || ciErrNum != CL_SUCCESS){
-		fprintf(stderr, "Failed to create program %d %s\n", ciErrNum, get_cl_error_str(ciErrNum));
-	}
-
-	ciErrNum = clBuildProgram(program, nDevices, device, NULL, NULL, NULL);
-	if(ciErrNum != CL_SUCCESS){
-		if(ciErrNum == CL_BUILD_PROGRAM_FAILURE){
-			size_t build_log_size = 900;
-			char build_log[900];
-			size_t build_log_ret;
-
-			ciErrNum =  clGetProgramBuildInfo(program, device[0], CL_PROGRAM_BUILD_LOG, build_log_size, build_log, &build_log_ret);
-			fprintf(stderr, build_log );
-		}
-	}
-	free(source);
-	return program;
-}
-
-/**/
-cl_command_queue createcommandqueue(cl_context context, cl_device_id device){
-	cl_int error;
-	cl_command_queue queue;
-	cl_command_queue_properties pro = 0;
-	queue = clCreateCommandQueue(context,
-			device,
-			pro,
-			&error);
-	/**/
-	if(error != CL_SUCCESS){
-		fprintf(stderr, "Failed to create command queue . %d \n", error);
-	}
-
-	return queue;
-}
-
-
-cl_context createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices){
-	cl_command_queue queue;
-	cl_context context;
-	cl_platform_id platform;
-	cl_int err;
-
-	assert(shared);
-
-	context = createclcontext(shared, ncldevices, devices);
-	if(context == NULL){
-		return NULL;
-	}
-	queue = createcommandqueue(context, (*devices)[0]);
-
-
-	/*	*/
-	ExCreateTexture(&clframetexture, GL_TEXTURE_2D, 0, GL_RGB, 512, 512, 0 , GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	clmemframetexture = clCreateFromGLTexture(context, CL_MEM_WRITE_ONLY,  GL_TEXTURE_2D, 0, clframetexture.texture, &err);
-
-	return context;
-}
-
-cl_program createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform){
-	cl_program program;
-	cl_kernel kernel;
-	cl_mem texmem;
-	cl_int err;
-	int x;
-	int kerneltexindex;
-	cl_uint numKernelArgs;
-	char argname[256];
-	size_t argnamesize;
-	unsigned int width;
-	unsigned int height;
-
-
-	program = createProgram(context, nNumDevices, id, cfilename);
-	assert(program);
-	kernel = clCreateKernel(program, "main", &err);
-	if(err != CL_SUCCESS){
-		fprintf(stderr, "Failed to create kernel %d %s\n", err, get_cl_error_str(err));
-	}
-
-
-
-
-	/*	framebuffer image view attributes information.	*/
-	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clmemframetexture);
-
-	/*	iterate through all the argument.	*/
-	kerneltexindex = 1;
-	err = clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
-	for(x = kerneltexindex; x < numKernelArgs; x++){
-		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, 0, NULL, &argnamesize);
-		err = clGetKernelArgInfo(kernel, x, CL_KERNEL_ARG_NAME, argnamesize, argname, &argnamesize);
-		/*	check for predefine variable names.	*/
-		if(strcmp(argname, "resolution") == 0){
-			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
-			uniform->resolution = x;
-			continue;
-		}
-		if(strcmp(argname, "time") == 0){
-			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
-			uniform->time = x;
-			continue;
-		}
-		if(strcmp(argname, "mouse") == 0){
-			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_uint2), NULL);
-			uniform->mouse = x;
-			continue;
-		}
-		if(strcmp(argname, "deltatime") == 0){
-			clSetKernelArg(kernel, kerneltexindex, sizeof(cl_float), NULL);
-			uniform->deltatime = x;
-			continue;
-		}
-
-		kerneltexindex++;
-	}
-
-	/*	*/
-	for(x = 0; x < sizeof(textures) / sizeof(textures[0]); x++){
-		if(ExIsTexture( &textures[x] )){
-			texmem = clCreateFromGLTexture((cl_context)context,
-					CL_MEM_READ_ONLY,
-					textures[x].target,
-					0,
-					textures[x].texture,
-					&err);
-			clSetKernelArg(kernel, kerneltexindex  + x + 0, sizeof(cl_mem), &texmem);
-			uniform->tex[x + kerneltexindex] = x;
-
-		}else{
-			break;
-		}
-	}
-
-	return program;
-}
 
 
 int main(int argc, const char** argv){
@@ -914,7 +623,7 @@ int main(int argc, const char** argv){
 		return EXIT_FAILURE;
 	}
 
-	/*	*/
+	/*	First argument reading pass.	*/
 	if(private_glslview_readargument(argc, argv, 0) == 2){
 		return EXIT_SUCCESS;
 	}
@@ -979,42 +688,55 @@ int main(int argc, const char** argv){
 	}
 
 
+
 	/*	Load shader fragment source code.	*/
-	privatefprintf("----------- fetching source code ----------\n");
-	if(isPipe && !use_stdin_as_buffer){
-		char buf[4096];
-		unsigned int len;
-		unsigned int totallen = 0;
-		while( ( len = read(STDIN_FILENO, buf, sizeof(buf) ) ) > 0 ){
-			fragData = realloc(fragData, totallen + len);
-			memcpy(fragData + totallen, buf, len);
-			totallen += len;
+
+	if(usingopencl == 0){
+		privatefprintf("----------- fetching source code ----------\n");
+		if(isPipe && !use_stdin_as_buffer){
+			char buf[4096];
+			unsigned int len;
+			unsigned int totallen = 0;
+			while( ( len = read(STDIN_FILENO, buf, sizeof(buf) ) ) > 0 ){
+				fragData = realloc(fragData, totallen + len);
+				memcpy(fragData + totallen, buf, len);
+				totallen += len;
+			}
+
 		}
+		else{
+			for(x = 0; x < numFragPaths; x++){
+				srclen = ExLoadFile((const char*)fragPath[x], (void**)&fragData);
+				debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
 
-	}
-	else{
-		for(x = 0; x < numFragPaths; x++){
-			srclen = ExLoadFile((const char*)fragPath[x], (void**)&fragData);
-			debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
+				/*	compile shader.	*/
+				privatefprintf("----------- compiling source code ----------\n");
+				if(ExLoadShaderv(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
+					fprintf(stderr, "Invalid shader.\n");
+					status = EXIT_FAILURE;
+					goto error;
+				}else{
+					glslview_update_shader_uniform(&uniform[x], &shader[x], size.width, size.height);
+				}
 
-			/*	compile shader.	*/
-			privatefprintf("----------- compiling source code ----------\n");
-			if(ExLoadShaderv(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
-				fprintf(stderr, "Invalid shader.\n");
-				status = EXIT_FAILURE;
-				goto error;
-			}else{
-				glslview_update_shader_uniform(&uniform[x], &shader[x], size.width, size.height);
+				if( srclen < 0 ){
+					status = EXIT_FAILURE;
+					goto error;
+				}
+
+				/*	free fragment source.	*/
+				free(fragData);
+				fragData = NULL;
 			}
-
-			if( srclen < 0 ){
-				status = EXIT_FAILURE;
-				goto error;
-			}
-
-			/*	free fragment source.	*/
-			free(fragData);
-			fragData = NULL;
+		}
+	}else{
+		privatefprintf("----------- Creating quad fragment ----------\n");
+		if(ExLoadShaderv(&shader[0], vertex, quadfrag, NULL, NULL, NULL) == 0){
+			fprintf(stderr, "Invalid shader.\n");
+			status = EXIT_FAILURE;
+			goto error;
+		}else{
+			glslview_update_shader_uniform(&uniform[0], &shader[0], size.width, size.height);
 		}
 	}
 
@@ -1190,7 +912,6 @@ int main(int argc, const char** argv){
 			else if(ret == 0){
 				if(visable || renderInBackground){
 					for(x = 0; x < numShaderPass; x++){
-
 
 
 						glUseProgram(shader[x].program);
