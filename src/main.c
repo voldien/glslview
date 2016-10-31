@@ -16,8 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+#include<SDL2/SDL.h>
 #include<ELT/elt.h>
 #include<ELT/graphic.h>
+
 #include"internal.h"
 
 #include<GL/gl.h>
@@ -613,7 +615,7 @@ int main(int argc, const char** argv){
 	ExGetPrimaryScreenSize(&size);
 	size.width /= 2;
 	size.height /= 2;
-	window = ExCreateWindow(size.width / 2, size.height / 2, size.width, size.height, rendererapi);
+	window = SDL_CreateWindow("glslview", size.width / 4, size.height / 4, size.width / 2, size.height / 2, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if(!window){
 		status = EXIT_FAILURE;
 		goto error;
