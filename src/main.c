@@ -320,14 +320,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			switch(c){
 			case 'A':
 				if(optarg){
-					if(strcmp(optarg, "dsr") == 0){
-						/**/
-						if(ExIsOpenGLExtensionSupported("GL_ARB_framebuffer_object")){
-							ExGenFrameBuffers(1, &fbo);
-							///glBindFrameBuffers(GL_DRAW_FRAMEBUFFER, fbo);
-						}
-					}
-					else if(strcmp(optarg, "msaa") == 0){
+					if(strcmp(optarg, "msaa") == 0){
 
 					}
 
