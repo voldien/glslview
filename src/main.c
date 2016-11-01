@@ -52,6 +52,8 @@ extern int debugprintf(const char* format,...);
 /*	only needs to be called once if in polygone mode.	*/
 void initmatrix(void){
 
+	hpm_init(HPM_SSE2);
+	return;
 	if(hpm_supportcpufeat(HPM_AVX2)){
 		hpm_init(HPM_AVX2);
 	}
@@ -130,6 +132,11 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+	glGenBuffers(1, &vbo);
+	glGenBuffers(1, &ibo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+
 	/*	*/
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -143,15 +150,12 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (const void*)32);
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, (const void*)44);
 
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &ibo);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 	verticebuffersize = totalVerticesCount * stride;
 	indicesbuffersize = totalIndicesCount * sizeof(unsigned int);
-	debugprintf("Allocating %d bytes for vertex buffer.\n", verticebuffersize);
-	debugprintf("Allocating %d bytes for indices buffer.\n", indicesbuffersize);
+	debugprintf("Allocating %d kb for vertex buffer.\n", verticebuffersize / 1024 );
+	debugprintf("Allocating %d kb for indices buffer.\n", indicesbuffersize / 1024);
 	debugprintf("Process mesh %s.\n", mesh->mName.data);
 	glBufferData(GL_ARRAY_BUFFER, verticebuffersize, NULL, GL_STATIC_DRAW);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesbuffersize, NULL, GL_STATIC_DRAW);
@@ -242,8 +246,8 @@ const char* vertexpolygone = ""
 "layout(location = 1) in vec2 texturecoord;\n"
 "layout(location = 2) in vec3 normal;\n"
 "layout(location = 3) in vec3 tangent;\n"
-"uniform mat4 mvp;\n"
 "uniform mat4 model;\n"
+"uniform mat4 mvp;\n"
 "smooth out vec3 mvertex;\n"
 "smooth out vec2 muv;\n"
 "smooth out vec3 mnormal;\n"
@@ -742,7 +746,6 @@ int main(int argc, const char** argv){
 	ExWin drawable = NULL;						/*	*/
 
 
-	unsigned int numShaderPass = 0;					/*	*/
 	UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
 	ExShader shader[32] = {{0}};						/*	*/
 
@@ -871,13 +874,19 @@ int main(int argc, const char** argv){
 
 	}
 	else{
+		const char* vsource;
 		for(x = 0; x < numFragPaths; x++){
+
 			srclen = ExLoadFile((const char*)fragPath[x], (void**)&fragData);
 			debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
 
 			/*	compile shader.	*/
 			privatefprintf("----------- compiling source code ----------\n");
-			if(ExLoadShaderv(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
+			if(usepolygone)
+				vsource = vertexpolygone;
+			else
+				vsource = vertex;
+			if(ExLoadShaderv(&shader[x], vsource, fragData, NULL, NULL, NULL) == 0){
 				fprintf(stderr, "Invalid shader.\n");
 				status = EXIT_FAILURE;
 				goto error;
@@ -1090,6 +1099,7 @@ int main(int argc, const char** argv){
 				if(visable || renderInBackground){
 					for(x = 0; x < numShaderPass; x++){
 
+						glUseProgram(shader[x].program);
 						if(uniform[x].mvp != -1){
 							glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, mvp);
 						}
@@ -1149,11 +1159,12 @@ int main(int argc, const char** argv){
 			if(visable || renderInBackground){
 				for(x = 0; x < numShaderPass; x++){
 
+					glUseProgram(shader[x].program);
 					if(uniform[x].mvp != -1){
 						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, mvp);
 					}
 					if(uniform[x].model != -1){
-						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, model);
+						glUniformMatrix4fv(uniform[x].model, 1, GL_FALSE, model);
 					}
 				}
 

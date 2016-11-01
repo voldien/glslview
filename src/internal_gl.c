@@ -49,6 +49,11 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, ExSha
 	uniform->tex14 = glGetUniformLocation(shader->program, "tex14");
 	uniform->tex15 = glGetUniformLocation(shader->program, "tex15");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
+	uniform->mvp = glGetUniformLocation(shader->program, "mvp");
+	uniform->model = glGetUniformLocation(shader->program, "model");
+	uniform->perspective = glGetUniformLocation(shader->program, "pers");
+	uniform->view = glGetUniformLocation(shader->program, "view");
+
 
 	debugprintf("time %d\n", uniform->time);
 	debugprintf("deltatime %d\n", uniform->deltatime);
@@ -73,6 +78,10 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, ExSha
 	debugprintf("tex14 %d\n", uniform->tex14);
 	debugprintf("tex15 %d\n", uniform->tex15);
 	debugprintf("backbuffer %d\n", uniform->backbuffer);
+	debugprintf("mvp %d\n", uniform->mvp);
+	debugprintf("model%d\n", uniform->model);
+	debugprintf("perspective %d\n", uniform->perspective);
+	debugprintf("view %d\n", uniform->view);
 
 	glUseProgram(shader->program);
 
