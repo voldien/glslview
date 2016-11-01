@@ -85,14 +85,18 @@ typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExSha
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
 typedef void (*pdisplaygraphic)(ExWin drawable);
 
+/**/
+extern presize_screen glslview_resize_screen;
+extern pupdate_shader_uniform glslview_update_shader_uniform;
+extern pdisplaygraphic glslview_displaygraphic;
+extern pupdate_update_uniforms glslview_update_uniforms;
+extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
-presize_screen glslview_resize_screen;
-pupdate_shader_uniform glslview_update_shader_uniform;
-pdisplaygraphic glslview_displaygraphic;
-pupdate_update_uniforms glslview_update_uniforms;
-
+/**/
 extern const float quad[4][3];
 
+
+void glslview_default_init(void);
 /**
  *
  */
@@ -118,6 +122,8 @@ void glslview_displaygraphic_gl(ExWin drawable);
 void glslview_displaygraphic_vk(ExWin drawable);
 
 
+void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* location, float ttime, float deltatime);
+
 
 
 
@@ -132,14 +138,15 @@ extern int debugprintf(const char* format,...);
 
 
 /**/
-cl_context glslview_createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device);
+extern cl_context glslview_createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device);
 /*	Create OpenCL program.	*/
-cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_device_id* device, const char* cfilename);
+extern cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_device_id* device, const char* cfilename);
 /**/
-cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id device);
-cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices);
-cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
-void glslview_renderclframe(cl_command_queue queue, cl_kernel kernel, unsigned int w, unsigned int h);
+extern cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id device);
+extern cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices);
+extern cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
+extern void glslview_acquirecltextures(cl_context context, cl_command_queue queue, cl_kernel kernel);
+extern void glslview_renderclframe(cl_command_queue queue, cl_kernel kernel);
 
 
 extern ExWin window;								/*	Window.	*/
@@ -153,6 +160,7 @@ extern int ifd;										/*	inotify file descriptor.*/
 extern int wd;										/*	inotify watch directory.	*/
 extern char* inotifybuf;							/*	*/
 extern unsigned int numFragPaths;					/*	*/
+extern unsigned int numShaderPass;
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
 extern unsigned int fbo;							/*	*/
 extern unsigned int ftextype;
@@ -164,6 +172,7 @@ extern const int numTextures;
 extern unsigned int nextTex;						/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;
+
 /*	Opencl.	*/
 extern unsigned int usingopencl;					/*	*/
 extern cl_context clcontext;							/*	*/
@@ -172,9 +181,13 @@ extern cl_device_id* cldevice;							/*	*/
 extern cl_command_queue clqueue;
 extern cl_program clprogram;							/*	*/
 extern cl_kernel clkernel;								/*	*/
-extern cl_mem clmemframetexture;						/*	*/
-extern ExTexture clframetexture;
+extern unsigned int numclframebuffer;
+extern cl_mem clmemframetexture[2];						/*	*/
+extern ExTexture clframetexture[2];
+extern unsigned int numcltextures;
+extern cl_mem cltextures[16];
 /*	*/
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
+
 
 #endif

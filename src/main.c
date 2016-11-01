@@ -104,6 +104,7 @@ int ifd = -1;									/*	inotify file descriptor.*/
 int wd = -1;									/*	inotify watch directory.	*/
 char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
+unsigned int numShaderPass = 0;
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
 char* clfrag = NULL;
 unsigned int fbo = 0;							/*	*/
@@ -125,18 +126,35 @@ cl_device_id* cldevice = NULL;					/*	*/
 cl_command_queue clqueue = 0;
 cl_program clprogram = 0;						/*	*/
 cl_kernel clkernel = 0;							/*	*/
-cl_mem clmemframetexture = 0;					/*	*/
-ExTexture clframetexture = {0};					/*	*/
+unsigned int numclframebuffer = 2;
+cl_mem clmemframetexture[2] = {0};				/*	*/
+unsigned int clcurrent = 0;
+ExTexture clframetexture[2] = {{0}};				/*	*/
+unsigned int numcltextures = 0;
+cl_mem cltextures[16];
 
 typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 
 
 pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
+presize_screen glslview_resize_screen = NULL;
+pupdate_shader_uniform glslview_update_shader_uniform = NULL;
+pdisplaygraphic glslview_displaygraphic = NULL;
+pupdate_update_uniforms glslview_update_uniforms = NULL;
+pswapbufferfunctype glslview_swapbuffer	= NULL;					/*	Function pointer for swap default framebuffer.	*/
 
 
 
 
+
+void glslview_default_init(void){
+	glslview_resize_screen = glslview_resize_screen_gl;
+	glslview_displaygraphic = glslview_displaygraphic_gl;
+	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
+	glslview_update_uniforms = glslview_update_uniforms_gl;
+	glslview_swapbuffer = ExSwapBuffers;
+}
 
 /**/
 int privatefprintf(const char* format,...){
@@ -344,14 +362,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			switch(c){
 			case 'A':
 				if(optarg){
-					if(strcmp(optarg, "dsr") == 0){
-						/**/
-						if(ExIsOpenGLExtensionSupported("GL_ARB_framebuffer_object")){
-							ExGenFrameBuffers(1, &fbo);
-							///glBindFrameBuffers(GL_DRAW_FRAMEBUFFER, fbo);
-						}
-					}
-					else if(strcmp(optarg, "msaa") == 0){
+					if(strcmp(optarg, "msaa") == 0){
 
 					}
 
@@ -427,13 +438,15 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			case 'c':
 				if(optarg){	/*	Requires argument.	*/
 					if(clcontext == NULL){
+						privatefprintf("Creating OpenCL Context.\n");
 						clcontext = glslview_createCLContext(ExGetCurrentOpenGLContext(), &ncldevices, &cldevice);
 						if(clcontext == NULL){
 							exit(EXIT_FAILURE);
 						}
 					}
+					privatefprintf("Creating OpenCL program, source %s\n", optarg);
 					clprogram = glslview_createCLProgram(clcontext, ncldevices, cldevice, optarg, NULL);
-					if(clprogram){
+					if(clprogram == NULL){
 						exit(EXIT_FAILURE);
 					}
 
@@ -576,16 +589,12 @@ void glslview_terminate(void){
 
 int main(int argc, const char** argv){
 	ERESULT status = EXIT_SUCCESS;				/*	*/
-	ExOpenGLContext glc;
-	ExOpenCLContext clc;
-	ExCLDeviceID deviceid;
 
 	ExEvent event = {0};						/*	*/
 	ExWin drawable = NULL;						/*	*/
 
-	UniformLocation uniform[32] = {0};	/*	uniform.	*/
-	ExShader shader[32] = {0};						/*	*/
-	unsigned int numShaderPass = 0;					/*	*/
+	UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
+	ExShader shader[32] = {{0}};						/*	*/
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
 
@@ -623,6 +632,9 @@ int main(int argc, const char** argv){
 		return EXIT_FAILURE;
 	}
 
+
+	/*	Init values that has to been set in order for the software to work.	*/
+	glslview_default_init();
 	/*	First argument reading pass.	*/
 	if(private_glslview_readargument(argc, argv, 0) == 2){
 		return EXIT_SUCCESS;
@@ -738,6 +750,8 @@ int main(int argc, const char** argv){
 		}else{
 			glslview_update_shader_uniform(&uniform[0], &shader[0], size.width, size.height);
 		}
+
+		glslview_acquirecltextures(clcontext, clqueue, clkernel);
 	}
 
 
@@ -911,24 +925,8 @@ int main(int argc, const char** argv){
 			}
 			else if(ret == 0){
 				if(visable || renderInBackground){
-					for(x = 0; x < numShaderPass; x++){
-
-
-						glUseProgram(shader[x].program);
-
-						glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-						glslview_displaygraphic(drawable);
-
-						if(uniform[x].backbuffer != -1){
-							glActiveTexture(GL_TEXTURE0 + numTextures);
-							glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-							glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
-						}
-					}
-
-					glClear(GL_COLOR_BUFFER_BIT);
+					glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
 				}
-
 			}else{
 				struct inotify_event ionevent;
 
@@ -976,21 +974,7 @@ int main(int argc, const char** argv){
 		else{
 
 			if(visable || renderInBackground){
-				for(x = 0; x < numShaderPass; x++){
-
-					glUseProgram(shader[x].program);
-
-					glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-					glslview_displaygraphic(drawable);
-
-					if(uniform[x].backbuffer != -1){
-						glActiveTexture(GL_TEXTURE0 + numTextures);
-						glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-						glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
-					}
-				}
-
-				glClear(GL_COLOR_BUFFER_BIT);
+				glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
 			}/*	render passes	*/
 
 
@@ -1005,7 +989,12 @@ int main(int argc, const char** argv){
 	glslview_terminate();
 
 	if(usingopencl){
-		clReleaseMemObject(clmemframetexture);
+		for(x = 0; x < numclframebuffer; x++){
+			clReleaseMemObject(clmemframetexture[x]);
+		}
+		for(x = 0; x < numcltextures; x++){
+			clReleaseMemObject(cltextures[x]);
+		}
 		clReleaseProgram(clprogram);
 		clReleaseCommandQueue(clqueue);
 		clReleaseContext(clcontext);
