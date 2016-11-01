@@ -282,6 +282,7 @@ int ifd = -1;									/*	inotify file descriptor.*/
 int wd = -1;									/*	inotify watch directory.	*/
 char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
+unsigned int numShaderPass = 0;
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
 unsigned int numgeoPaths = 0;					/*	num.	*/
 char* geoPath[32] = {NULL};						/*	Path of geometry shader.	*/
@@ -300,9 +301,23 @@ Mesh mesh;
 
 
 
+presize_screen glslview_resize_screen = NULL;
+pupdate_shader_uniform glslview_update_shader_uniform = NULL;
+pdisplaygraphic glslview_displaygraphic = NULL;
+pupdate_update_uniforms glslview_update_uniforms = NULL;
+pswapbufferfunctype glslview_swapbuffer	= NULL;					/*	Function pointer for swap default framebuffer.	*/
 
 
 
+
+
+void glslview_default_init(void){
+	glslview_resize_screen = glslview_resize_screen_gl;
+	glslview_displaygraphic = glslview_displaygraphic_gl;
+	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
+	glslview_update_uniforms = glslview_update_uniforms_gl;
+	glslview_swapbuffer = ExSwapBuffers;
+}
 
 /**/
 int privatefprintf(const char* format,...){
@@ -507,14 +522,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			switch(c){
 			case 'A':
 				if(optarg){
-					if(strcmp(optarg, "dsr") == 0){
-						/**/
-						if(ExIsOpenGLExtensionSupported("GL_ARB_framebuffer_object")){
-							ExGenFrameBuffers(1, &fbo);
-							///glBindFrameBuffers(GL_DRAW_FRAMEBUFFER, fbo);
-						}
-					}
-					else if(strcmp(optarg, "msaa") == 0){
+					if(strcmp(optarg, "msaa") == 0){
 
 					}
 
@@ -734,10 +742,10 @@ int main(int argc, const char** argv){
 	ExWin drawable = NULL;						/*	*/
 
 
-	UniformLocation uniform[32] = {0};	/*	uniform.	*/
-	ExShader shader[32] = {0};						/*	*/
-
 	unsigned int numShaderPass = 0;					/*	*/
+	UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
+	ExShader shader[32] = {{0}};						/*	*/
+
 	unsigned int isPipe;						/*	*/
 	long int srclen;							/*	*/
 
@@ -783,6 +791,9 @@ int main(int argc, const char** argv){
 		fprintf(stderr, "No argument.\n");
 		return EXIT_FAILURE;
 	}
+
+	/*	Init values that has to been set in order for the software to work.	*/
+	glslview_default_init();
 
 	/*	*/
 	if(private_glslview_readargument(argc, argv, 0) == 2){
@@ -1061,7 +1072,9 @@ int main(int argc, const char** argv){
 			hpm_mat4x4_multiply_mat4x4fv(perspective, view, tmpmat);
 			hpm_mat4x4_multiply_mat4x4fv(tmpmat, model, mvp);
 		}
-
+		ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
+		deltatime = ExGetHiResTime() - pretime;
+		pretime = ExGetHiResTime();
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
 			fd_set readfd;
@@ -1077,33 +1090,16 @@ int main(int argc, const char** argv){
 				if(visable || renderInBackground){
 					for(x = 0; x < numShaderPass; x++){
 
-						ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
-						deltatime = ExGetHiResTime() - pretime;
-						pretime = ExGetHiResTime();
-
-						glUseProgram(shader[x].program);
-
 						if(uniform[x].mvp != -1){
 							glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, mvp);
 						}
 						if(uniform[x].model != -1){
 							glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, model);
 						}
-
-						glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-						glslview_displaygraphic(drawable);
-
-
-						if(uniform[x].backbuffer != -1){
-							glActiveTexture(GL_TEXTURE0 + numTextures);
-							glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-							glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
-						}
 					}
+					glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
 
-					glClear(GL_COLOR_BUFFER_BIT);
 				}
-
 			}else{
 				struct inotify_event ionevent;
 
@@ -1159,18 +1155,10 @@ int main(int argc, const char** argv){
 					if(uniform[x].model != -1){
 						glUniformMatrix4fv(uniform[x].mvp, 1, GL_FALSE, model);
 					}
-
-					glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
-					glslview_displaygraphic(drawable);
-
-					if(uniform[x].backbuffer != -1){
-						glActiveTexture(GL_TEXTURE0 + numTextures);
-						glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-						glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
-					}
 				}
 
-				glClear(GL_COLOR_BUFFER_BIT);
+				glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
+
 			}/*	render passes	*/
 
 
