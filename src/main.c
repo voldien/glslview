@@ -231,6 +231,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 				else{
 					ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, 2);
 				}
+				glEnable(GL_MULTISAMPLE);
 				privatefprintf("Set multisample framebuffer : %d samples.\n", optarg ? atoi(optarg) : 2);
 
 				break;
