@@ -105,6 +105,7 @@ unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
 
+/*	function pointers.	*/
 presize_screen glslview_resize_screen = NULL;
 pupdate_shader_uniform glslview_update_shader_uniform = NULL;
 pdisplaygraphic glslview_displaygraphic = NULL;
