@@ -240,22 +240,14 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					if(strcmp(optarg, "opengl") == 0){
 						rendererapi = EX_OPENGL;
 						privatefprintf("Set rendering API to OpenGL.\n");
-
 					}
 					if(strcmp(optarg, "openglcore") == 0){
 						rendererapi = EX_OPENGL_CORE;
 						privatefprintf("Set rendering API to OpenGL core.\n");
-						/*	TODO set it for all the opengl as well.	*/
-						glslview_resize_screen = glslview_resize_screen_gl;
-						glslview_displaygraphic = glslview_displaygraphic_gl;
-						glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
-						glslview_update_uniforms = glslview_update_uniforms_gl;
-						glslview_swapbuffer = ExSwapBuffers;
 					}
 					else if(strcmp(optarg, "opengles") == 0){
 						rendererapi = EX_OPENGLES;
 						privatefprintf("Set rendering API to OpenGL-ES.\n");
-
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
 						rendererapi = EX_VULKAN;
