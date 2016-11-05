@@ -175,8 +175,9 @@ extern const int numTextures;
 extern unsigned int nextTex;						/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;						/*	*/
-extern unsigned int usepolygone;
-extern Mesh mesh;
+/*	polygone	*/
+extern unsigned int usepolygone;					/**/
+extern Mesh mesh;									/**/
 
 
 

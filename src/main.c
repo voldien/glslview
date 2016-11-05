@@ -50,10 +50,8 @@ extern int debugprintf(const char* format,...);
 
 
 /*	only needs to be called once if in polygone mode.	*/
-void initmatrix(void){
+void glslview_initmatrix(void){
 
-	hpm_init(HPM_SSE2);
-	return;
 	if(hpm_supportcpufeat(HPM_AVX2)){
 		hpm_init(HPM_AVX2);
 	}
@@ -83,6 +81,7 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	unsigned int vao;
 	unsigned int vbo;
 	unsigned int ibo;
+	GLenum error;
 
 	unsigned int totalVerticesCount = 0;
 	unsigned int totalIndicesCount = 0;
@@ -102,7 +101,7 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	scene = aiImportFile(cfilename, aiProcessPreset_TargetRealtime_Quality);
 
 	if(scene == NULL){
-		fprintf(stderr, aiGetErrorString());
+		fprintf(stderr, "%s\n", aiGetErrorString());
 		return;
 	}
 
@@ -126,7 +125,7 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	stride = nfloats * sizeof(float);
 	privatefprintf("Total vertices count %d\n", totalVerticesCount);
 	privatefprintf("Total indices count %d\n", totalIndicesCount);
-	privatefprintf("Stride value %d\n", stride);
+	privatefprintf("Stride %d bytes.\n", stride);
 
 
 	glGenVertexArrays(1, &vao);
@@ -135,6 +134,7 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glGenBuffers(1, &vbo);
 	glGenBuffers(1, &ibo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
 
 	/*	*/
@@ -151,19 +151,26 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, (const void*)44);
 
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+
 	verticebuffersize = totalVerticesCount * stride;
 	indicesbuffersize = totalIndicesCount * sizeof(unsigned int);
 	debugprintf("Allocating %d kb for vertex buffer.\n", verticebuffersize / 1024 );
 	debugprintf("Allocating %d kb for indices buffer.\n", indicesbuffersize / 1024);
 	debugprintf("Process mesh %s.\n", mesh->mName.data);
+	error = glGetError();
 	glBufferData(GL_ARRAY_BUFFER, verticebuffersize, NULL, GL_STATIC_DRAW);
+	error = glGetError();
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesbuffersize, NULL, GL_STATIC_DRAW);
+	error = glGetError();
 
 
 	vertex = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+	error = glGetError();
 	indices = (unsigned int*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
+	error = glGetError();
 
+	/*	Check if pointer is not NULL.	*/
 	assert(vertex);
 	assert(indices);
 
@@ -181,6 +188,16 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 			memcpy(&vertex[nvertexfloats + y * nfloats + 5], &mesh->mNormals[y], sizeof(struct aiVector3D));
 			memcpy(&vertex[nvertexfloats + y * nfloats + 8], &mesh->mTangents[y], sizeof(struct aiVector3D));
 			memcpy(&vertex[nvertexfloats + y * nfloats + 11], &mesh->mBitangents[y], sizeof(struct aiVector3D));
+
+
+			hpmvec4f tmp;
+			tmp[0] = vertex[nvertexfloats + y * nfloats + 0];
+			tmp[1] = vertex[nvertexfloats + y * nfloats + 1];
+			tmp[2] = vertex[nvertexfloats + y * nfloats + 2];
+			tmp[3] = 0;
+			max = (hpmvec4f)hpm_vec4_maxfv(&tmp, (hpmvec4f*)&max);
+			min = (hpmvec4f)hpm_vec4_minfv(&tmp, (hpmvec4f*)&min);
+
 		}
 
 		for(z = 0; z < mesh->mNumFaces; z++){
@@ -209,6 +226,19 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 	pmesh->vao = vao;
 	pmesh->vbo = vbo;
 	pmesh->ibo = ibo;
+	pmesh->size[0] = (float)(max[0] - min[0]);
+	pmesh->size[1] = (float)(max[1] - min[1]);
+	pmesh->size[2] = (float)(max[2] - min[2]);
+	pmesh->center[0] = (min[0] + max[0]) / 2.0f;
+	pmesh->center[1] = (min[1] + max[1]) / 2.0f;
+	pmesh->center[2] = (min[2] + max[2]) / 2.0f;
+	debugprintf("AABB  center %3f,%3f,%3f size %3f,%3f,%3f\n",
+			pmesh->center[0],
+			pmesh->center[1],
+			pmesh->center[2],
+			pmesh->size[0],
+			pmesh->size[1],
+			pmesh->size[2]);
 
 
 	/*	*/
@@ -300,6 +330,7 @@ const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
+/*	Polygone.	*/
 unsigned int usepolygone = 0;
 Mesh mesh;
 
@@ -502,7 +533,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 			case 'p':
 				if(optarg){
 					usepolygone = 1;
-					initmatrix();
+					glslview_initmatrix();
 				}
 				break;
 			case '\?':
@@ -769,7 +800,7 @@ int main(int argc, const char** argv){
 	hpmvec4x4f_t perspective;					/*	perspective matrix.	*/
 	hpmvec4x4f_t mvp;
 	hpmvec4x4f_t tmpmat;
-	hpmvec3f campos = {0.0f};							/*	camera position.	*/
+	hpmvec3f campos = {0.0f, 1, 10};							/*	camera position.	*/
 	hpmquatf camrotate;							/*	camera rotation as a quaternion.	*/
 	hpmquatf rotate;
 
@@ -927,10 +958,18 @@ int main(int argc, const char** argv){
 
 	/*	*/
 	drawable = ExGetCurrentGLDrawable();
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
+	if(usepolygone){
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glFrontFace(GL_FRONT);
+		glDepthMask(TRUE);
+	}
+	else{
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_CULL_FACE);
+		glDepthMask(FALSE);
+	}
 	glDisable(GL_BLEND);
-	glDepthMask(FALSE);
 	glDisable(GL_STENCIL_TEST);
 
 	/*	*/
@@ -962,10 +1001,23 @@ int main(int argc, const char** argv){
 
 
 	if(usepolygone){
+		hpmvec3f modelpos = mesh.center * -1.0f;
+		hpmvec4f modelscale = 1000.0f / mesh.size;
+		campos = mesh.size / 1000.0f;
+
+		/**/
 		hpm_quat_identityfv(&camrotate);
 		hpm_mat4x4_identityfv(view);
 		hpm_mat4x4_identityfv(model);
-		hpm_mat4x4_projfv(perspective, HPM_RAD2DEG(90.0f), (float)size.width / (float)size.height, 0.15f, 1000.0f);
+		hpm_mat4x4_multi_translationfv(model, &modelpos);
+		hpm_mat4x4_multi_scalefv(model, &modelscale);
+
+		/**/
+		hpm_mat4x4_multi_rotationxf(view, HPM_DEG2RAD( 45 ));
+		hpm_mat4x4_multi_translationfv(view, &campos);
+
+		/**/
+		hpm_mat4x4_projfv(perspective, 90.0f, (float)size.width / (float)size.height, 0.15f, 1000.0f);
 	}
 
 
@@ -1019,13 +1071,15 @@ int main(int argc, const char** argv){
 				if(ExIsKeyDown(EXK_End)){
 
 				}
+				priorlocation.x = location.x;
+				priorlocation.y = location.y;
 			}
 
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
 
 				if(usepolygone){
 					/*	update the perspective.	*/
-					hpm_mat4x4_projfv(perspective, HPM_RAD2DEG(90.0f),
+					hpm_mat4x4_projfv(perspective,  90.0f,
 							(float)event.size.width / (float)event.size.height,
 							0.15f, 1000.0f);
 				}
@@ -1076,11 +1130,19 @@ int main(int argc, const char** argv){
 			}
 		}
 
+		/*	Test function.	*/
+		/*
+		hpm_mat4x4_identityfv(view);
+
+		hpm_mat4x4_multi_translationfv(view, &campos);
+		hpm_mat4x4_multi_rotationxf(view, ttime );
+		*/
 
 		if(usepolygone){
-			hpm_mat4x4_multiply_mat4x4fv(perspective, view, tmpmat);
-			hpm_mat4x4_multiply_mat4x4fv(tmpmat, model, mvp);
+			hpm_mat4x4_multiply_mat4x4fv(model, view, tmpmat);
+			hpm_mat4x4_multiply_mat4x4fv(tmpmat, perspective, mvp);
 		}
+
 		ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
 		deltatime = ExGetHiResTime() - pretime;
 		pretime = ExGetHiResTime();
@@ -1186,6 +1248,21 @@ int main(int argc, const char** argv){
 
 	/*	Release OpenGL resources.	*/
 	if(ExGetCurrentOpenGLContext()){
+		/*	Release polygone object.	*/
+		if(usepolygone){
+			if(glIsBuffer(mesh.vbo)){
+				glDeleteBuffers(1, &mesh.ibo);
+			}
+			if(glIsBuffer(mesh.ibo)){
+				glDeleteBuffers(1, &mesh.ibo);
+			}
+			if(glIsVertexArray(mesh.vao)){
+				glDeleteVertexArrays(1, &mesh.vao);
+			}
+
+			hpm_release();
+		}
+
 		for(x = 0; x < numShaderPass; x++){
 			if(glIsProgram(shader[x].program) == GL_TRUE){
 				ExDeleteShaderProgram(&shader[x]);

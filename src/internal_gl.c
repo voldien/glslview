@@ -181,7 +181,7 @@ void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* u
 			glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
 		}
 	}
-	glClear(GL_COLOR_BUFFER_BIT);
-
+	glClear(usepolygone > 0 ? GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT : GL_COLOR_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT |  ( ( (usepolygone & 0x1) << 32 ) & GL_DEPTH_BUFFER_BIT) );
 }
 
