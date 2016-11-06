@@ -53,7 +53,7 @@ typedef struct uniform_location_t{
 			int tex14;			/*	texture 14.	*/
 			int tex15;			/*	texture 15.	*/
 		};
-		unsigned int tex[16];
+		int tex[16];
 	};
 
 }UniformLocation;
@@ -152,12 +152,24 @@ extern int debugprintf(const char* format,...);
 
 
 
-/**/
+/**
+ *
+ *	@Return
+ */
 extern cl_context glslview_createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device);
+/**
+ *	Release OpenCL release.
+ */
 extern void glslview_clrelease(void);
-/*	Create OpenCL program.	*/
+
+/**
+ * 	Create OpenCL program.
+ */
 extern cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_device_id* device, const char* cfilename);
-/**/
+
+/**
+ *	@Return
+ */
 extern cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id device);
 extern cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices);
 extern cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform);
@@ -193,20 +205,20 @@ extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;
 
 /*	Opencl.	*/
-extern unsigned int usingopencl;					/*	*/
+extern unsigned int usingopencl;						/*	*/
 extern cl_context clcontext;							/*	*/
-extern unsigned int ncldevices;
+extern unsigned int ncldevices;							/*	*/
 extern cl_device_id* cldevice;							/*	*/
-extern cl_command_queue clqueue;
+extern cl_command_queue clqueue;						/*	*/
 extern cl_program clprogram;							/*	*/
 extern cl_kernel clkernel;								/*	*/
-extern unsigned int numclframebuffer;
+extern unsigned int numclframebuffer;					/*	*/
 extern cl_mem clmemframetexture[2];						/*	*/
-extern unsigned int clcurrent;
-extern ExTexture clframetexture[2];
-extern unsigned int numcltextures;
-extern cl_mem cltextures[16];
-extern UniformLocation cluniform;
+extern unsigned int clcurrent;							/*	*/
+extern ExTexture clframetexture[2];						/*	*/
+extern unsigned int numcltextures;						/*	*/
+extern cl_mem cltextures[16];							/*	*/
+extern UniformLocation cluniform;						/*	*/
 /*	*/
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 

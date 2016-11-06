@@ -206,7 +206,7 @@ cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_
 	}
 
 
-	ciErrNum = clBuildProgram(program, nDevices, device, "-cl-kernel-arg-info -g", NULL, NULL);
+	ciErrNum = clBuildProgram(program, nDevices, device, "-cl-kernel-arg-info", NULL, NULL);
 	if(ciErrNum != CL_SUCCESS){
 		if(ciErrNum == CL_BUILD_PROGRAM_FAILURE){
 			size_t build_log_size = 900;
@@ -221,7 +221,6 @@ cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_
 	return program;
 }
 
-/**/
 cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id device){
 	cl_int error;
 	cl_command_queue queue;
@@ -253,7 +252,7 @@ cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* ncldev
 		return NULL;
 	}
 
-	/*	TODO fix.	*/
+
 	queue = glslview_createcommandqueue(context, (*devices)[0]);
 	clqueue = queue;
 
@@ -267,6 +266,8 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 	cl_mem texmem;
 	cl_int err;
 	int x;
+	int y;
+	unsigned int texind = 0;
 	int kerneltexindex;
 	cl_uint numKernelArgs;
 	char argname[256];
@@ -340,7 +341,32 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 			uniform->deltatime = x;
 			continue;
 		}
+		if(strcmp(argtypename, "image2d_t") == 0){
+			if(ExIsTexture( &textures[texind] )){
+				texmem = clCreateFromGLTexture((cl_context)context,
+						CL_MEM_READ_ONLY,
+						textures[texind].target,
+						0,
+						textures[texind].texture,
+						&err);
+				if(texmem == NULL){
 
+					continue;
+				}
+
+				cltextures[texind] = texmem;
+				texind = ++numcltextures;
+				clSetKernelArg(kernel, x, sizeof(cl_mem), &texmem);
+				cluniform.tex[texind] = x;
+
+				/*	Acquire */
+				err = clEnqueueAcquireGLObjects(clqueue, texind, &cltextures[x], 0, NULL, NULL);
+				if(err != CL_SUCCESS){
+					fprintf(stderr, get_cl_error_str(err));
+				}
+			}
+
+		}/**/
 
 
 		kerneltexindex++;
@@ -373,7 +399,7 @@ void glslview_acquirecltextures(cl_context context, cl_command_queue queue, cl_k
 			cltextures[numcltextures] = texmem;
 			numcltextures++;
 			clSetKernelArg(kernel, kerneltexindex  + x + 0, sizeof(cl_mem), &texmem);
-			//uniform->tex[x + kerneltexindex] = x;
+			cluniform.tex[x + kerneltexindex] = x;
 			/*	Acquire */
 			err = clEnqueueAcquireGLObjects(clqueue, numcltextures, &cltextures[x], 0, NULL, NULL);
 			if(err != CL_SUCCESS){
@@ -391,13 +417,11 @@ void glslview_acquirecltextures(cl_context context, cl_command_queue queue, cl_k
 
 
 void glslview_cl_resize(unsigned int width, unsigned int height){
+	GLuint clearColor[4] = {0, 0, 0, 0};
 	cl_int err;
 	int i;
 
-
-
 	/*	Create framebuffer.	*/
-	GLuint clearColor[4] = {0, 0, 0, 0};
 	if( !( width == clframetexture[0].width && height == clframetexture[0].height ) ){
 		clFlush(clqueue);
 		glFlush();
@@ -433,13 +457,19 @@ void glslview_cl_resize(unsigned int width, unsigned int height){
 
 
 	if(clkernel){
-		if(cluniform.tex0 != -1){
-
+		int res[2] = {width, height};
+		for(i = 0; i < sizeof(cluniform.tex) / sizeof(cluniform.tex[0]); i++){
+			if(cluniform.tex[i] != -1){
+				clSetKernelArg(clkernel, cluniform.tex[i], sizeof(cl_mem), &cltextures[i]);
+			}
 		}
+
 		err = clSetKernelArg(clkernel, 0, sizeof(cl_mem), &clmemframetexture[0]);
 		err = clSetKernelArg(clkernel, 1, sizeof(cl_uint), &width);
 		err = clSetKernelArg(clkernel, 2, sizeof(cl_uint), &height);
-		glViewport(0,0, width, height);
+		/**/
+		err = clSetKernelArg(clkernel, cluniform.resolution, sizeof(cl_int2), &res[0]);
+
 	}
 
 }
