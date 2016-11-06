@@ -84,6 +84,7 @@ typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type
 typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
+typedef void (*pset_viewport)(unsigned int width, unsigned int height);
 typedef void (*pdisplaygraphic)(ExWin drawable);
 
 /**/
@@ -91,6 +92,7 @@ extern presize_screen glslview_resize_screen;
 extern pupdate_shader_uniform glslview_update_shader_uniform;
 extern pdisplaygraphic glslview_displaygraphic;
 extern pupdate_update_uniforms glslview_update_uniforms;
+extern pset_viewport glslview_set_viewport;
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
 /**/
@@ -126,6 +128,13 @@ void glslview_update_uniforms_vk(UniformLocation* uniform, ExShader* shader, flo
  */
 void glslview_displaygraphic_gl(ExWin drawable);
 void glslview_displaygraphic_vk(ExWin drawable);
+
+/**
+ *
+ */
+void glslview_set_viewport_gl(unsigned int width, unsigned int height);
+void glslview_set_viewport_vk(unsigned int width, unsigned int height);
+
 
 
 void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* location, float ttime, float deltatime);

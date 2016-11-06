@@ -144,6 +144,7 @@ presize_screen glslview_resize_screen = NULL;
 pupdate_shader_uniform glslview_update_shader_uniform = NULL;
 pdisplaygraphic glslview_displaygraphic = NULL;
 pupdate_update_uniforms glslview_update_uniforms = NULL;
+pset_viewport glslview_set_viewport = NULL;
 pswapbufferfunctype glslview_swapbuffer	= NULL;					/*	Function pointer for swap default framebuffer.	*/
 
 
@@ -155,6 +156,7 @@ void glslview_default_init(void){
 	glslview_displaygraphic = glslview_displaygraphic_gl;
 	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
 	glslview_update_uniforms = glslview_update_uniforms_gl;
+	glslview_set_viewport = glslview_set_viewport_gl;
 	glslview_swapbuffer = ExSwapBuffers;
 }
 
@@ -860,6 +862,7 @@ int main(int argc, const char** argv){
 			}
 
 			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
+				glslview_set_viewport(event.size.width, event.size.height);
 				for(x = 0; x < numShaderPass; x++){
 					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
 				}
@@ -867,6 +870,7 @@ int main(int argc, const char** argv){
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
+				glslview_set_viewport(event.size.width, event.size.height);
 				for(x = 0; x < numShaderPass; x++){
 					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
 				}

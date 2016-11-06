@@ -8,7 +8,6 @@
 
 void glslview_resize_screen_gl(ExEvent* event, UniformLocation* uniform, ExShader* shader, ExTexture* ftexture){
 	float resolution[2] = {event->size.width, event->size.height};
-	glViewport(0, 0, event->size.width, event->size.height);
 	glUniform2fv(uniform->resolution, 1, &resolution[0]);
 	privatefprintf("%dx%d.\n", event->size.width, event->size.height);
 
@@ -144,6 +143,10 @@ void glslview_update_uniforms_gl(UniformLocation* uniform, ExShader* shader, flo
 		}
 	}
 
+}
+
+void glslview_set_viewport_gl(unsigned int width, unsigned int height){
+	glViewport(0, 0, width, height);
 }
 
 
