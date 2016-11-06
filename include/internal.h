@@ -26,29 +26,29 @@
  *
  */
 typedef struct uniform_location_t{
-	unsigned int time;			/*	time in seconds as float.	*/
-	unsigned int resolution;	/*	resolution. */
-	unsigned int deltatime;		/*	delta time.	*/
-	unsigned int mouse;			/*	mouse.	*/
-	unsigned int offset;		/*	offset.	*/
-	unsigned int backbuffer;	/*	previous buffer.	*/
-	unsigned int stdin;			/*	stdin data.	*/
-	unsigned int tex0;			/*	texture 0.	*/
-	unsigned int tex1;			/*	texture 1.	*/
-	unsigned int tex2;			/*	texture 2.	*/
-	unsigned int tex3;			/*	texture 3.	*/
-	unsigned int tex4;			/*	texture 4.	*/
-	unsigned int tex5;			/*	texture 5.	*/
-	unsigned int tex6;			/*	texture 6.	*/
-	unsigned int tex7;			/*	texture 7.	*/
-	unsigned int tex8;			/*	texture 8.	*/
-	unsigned int tex9;			/*	texture 9.	*/
-	unsigned int tex10;			/*	texture 10.	*/
-	unsigned int tex11;			/*	texture 11.	*/
-	unsigned int tex12;			/*	texture 12.	*/
-	unsigned int tex13;			/*	texture 13.	*/
-	unsigned int tex14;			/*	texture 14.	*/
-	unsigned int tex15;			/*	texture 15.	*/
+	int time;			/*	time in seconds as float.	*/
+	int resolution;	/*	resolution. */
+	int deltatime;		/*	delta time.	*/
+	int mouse;			/*	mouse.	*/
+	int offset;		/*	offset.	*/
+	int backbuffer;	/*	previous buffer.	*/
+	int stdin;			/*	stdin data.	*/
+	int tex0;			/*	texture 0.	*/
+	int tex1;			/*	texture 1.	*/
+	int tex2;			/*	texture 2.	*/
+	int tex3;			/*	texture 3.	*/
+	int tex4;			/*	texture 4.	*/
+	int tex5;			/*	texture 5.	*/
+	int tex6;			/*	texture 6.	*/
+	int tex7;			/*	texture 7.	*/
+	int tex8;			/*	texture 8.	*/
+	int tex9;			/*	texture 9.	*/
+	int tex10;			/*	texture 10.	*/
+	int tex11;			/*	texture 11.	*/
+	int tex12;			/*	texture 12.	*/
+	int tex13;			/*	texture 13.	*/
+	int tex14;			/*	texture 14.	*/
+	int tex15;			/*	texture 15.	*/
 }UniformLocation;
 
 
@@ -77,6 +77,7 @@ typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type
 typedef void (*presize_screen)(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, ExShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime);
+typedef void (*pset_viewport)(unsigned int width, unsigned int height);
 typedef void (*pdisplaygraphic)(ExWin drawable);
 
 /**/
@@ -84,13 +85,19 @@ extern presize_screen glslview_resize_screen;
 extern pupdate_shader_uniform glslview_update_shader_uniform;
 extern pdisplaygraphic glslview_displaygraphic;
 extern pupdate_update_uniforms glslview_update_uniforms;
+extern pset_viewport glslview_set_viewport;
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
 /**/
 extern const float quad[4][3];
 
-
+/**
+ *	Initialize default function pointer.
+ *	It will set all the rendering function pointer
+ *	to the OpenGL version.
+ */
 void glslview_default_init(void);
+
 /**
  *
  */
@@ -114,6 +121,13 @@ void glslview_update_uniforms_vk(UniformLocation* uniform, ExShader* shader, flo
  */
 void glslview_displaygraphic_gl(ExWin drawable);
 void glslview_displaygraphic_vk(ExWin drawable);
+
+/**
+ *
+ */
+void glslview_set_viewport_gl(unsigned int width, unsigned int height);
+void glslview_set_viewport_vk(unsigned int width, unsigned int height);
+
 
 
 void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* location, float ttime, float deltatime);
