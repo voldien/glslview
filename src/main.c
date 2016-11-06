@@ -138,6 +138,7 @@ typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type
 
 pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
+/*	function pointers.	*/
 presize_screen glslview_resize_screen = NULL;
 pupdate_shader_uniform glslview_update_shader_uniform = NULL;
 pdisplaygraphic glslview_displaygraphic = NULL;
@@ -268,6 +269,7 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 				else{
 					ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, 2);
 				}
+				glEnable(GL_MULTISAMPLE);
 				privatefprintf("Set multisample framebuffer : %d samples.\n", optarg ? atoi(optarg) : 2);
 
 				break;
@@ -276,22 +278,14 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 					if(strcmp(optarg, "opengl") == 0){
 						rendererapi = EX_OPENGL;
 						privatefprintf("Set rendering API to OpenGL.\n");
-
 					}
 					if(strcmp(optarg, "openglcore") == 0){
 						rendererapi = EX_OPENGL_CORE;
 						privatefprintf("Set rendering API to OpenGL core.\n");
-						/*	TODO set it for all the opengl as well.	*/
-						glslview_resize_screen = glslview_resize_screen_gl;
-						glslview_displaygraphic = glslview_displaygraphic_gl;
-						glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
-						glslview_update_uniforms = glslview_update_uniforms_gl;
-						glslview_swapbuffer = ExSwapBuffers;
 					}
 					else if(strcmp(optarg, "opengles") == 0){
 						rendererapi = EX_OPENGLES;
 						privatefprintf("Set rendering API to OpenGL-ES.\n");
-
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
 						rendererapi = EX_VULKAN;

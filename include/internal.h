@@ -96,8 +96,13 @@ extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap
 /**/
 extern const float quad[4][3];
 
-
+/**
+ *	Initialize default function pointer.
+ *	It will set all the rendering function pointer
+ *	to the OpenGL version.
+ */
 void glslview_default_init(void);
+
 /**
  *
  */
