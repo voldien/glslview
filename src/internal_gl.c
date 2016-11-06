@@ -175,7 +175,6 @@ void glslview_rendergraphic(ExWin drawable, ExShader* shader, UniformLocation* u
 		}
 	}
 
-
 	glClear(GL_COLOR_BUFFER_BIT);
 }
 

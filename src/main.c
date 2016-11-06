@@ -132,6 +132,7 @@ unsigned int clcurrent = 0;
 ExTexture clframetexture[2] = {{0}};				/*	*/
 unsigned int numcltextures = 0;
 cl_mem cltextures[16];
+UniformLocation cluniform = {0};
 
 typedef void (*pswapbufferfunctype)(ExWin window);	/*	Function pointer data type.	*/
 
@@ -437,9 +438,10 @@ static int private_glslview_readargument(int argc, const char** argv, int pre){
 						if(clcontext == NULL){
 							exit(EXIT_FAILURE);
 						}
+						glslview_cl_resize(800,600);
 					}
 					privatefprintf("Creating OpenCL program, source %s\n", optarg);
-					clprogram = glslview_createCLProgram(clcontext, ncldevices, cldevice, optarg, NULL);
+					clprogram = glslview_createCLProgram(clcontext, ncldevices, cldevice, optarg, &cluniform);
 					if(clprogram == NULL){
 						exit(EXIT_FAILURE);
 					}
@@ -557,14 +559,17 @@ void glslview_catchSig(int signal){
 		break;
 	case SIGTERM:
 	case SIGABRT:
+		glslview_terminate();
 		exit(0);
 		break;
 	case SIGPIPE:
 		if(use_stdin_as_buffer){
+			glslview_terminate();
 			exit(EXIT_FAILURE);
 		}
 		break;
 	case SIGILL:
+		glslview_terminate();
 		exit(EXIT_FAILURE);
 		break;
 	}
@@ -858,12 +863,14 @@ int main(int argc, const char** argv){
 				for(x = 0; x < numShaderPass; x++){
 					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
 				}
+				glslview_cl_resize(event.size.width, event.size.height);
 			}
 
 			if(event.event & EX_EVENT_ON_FOCUSE){
 				for(x = 0; x < numShaderPass; x++){
 					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
 				}
+				glslview_cl_resize(event.size.width, event.size.height);
 			}
 
 			if(event.event & EX_EVENT_ON_UNFOCUSE){
@@ -982,18 +989,8 @@ int main(int argc, const char** argv){
 	privatefprintf("glslview is terminating.\n");
 	glslview_terminate();
 
-	if(usingopencl){
-		for(x = 0; x < numclframebuffer; x++){
-			clReleaseMemObject(clmemframetexture[x]);
-		}
-		for(x = 0; x < numcltextures; x++){
-			clReleaseMemObject(cltextures[x]);
-		}
-		clReleaseProgram(clprogram);
-		clReleaseCommandQueue(clqueue);
-		clReleaseContext(clcontext);
-	}
 
+	glslview_clrelease();
 	/*	Release OpenGL resources.	*/
 	if(ExGetCurrentOpenGLContext()){
 		for(x = 0; x < numShaderPass; x++){
