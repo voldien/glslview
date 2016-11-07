@@ -22,6 +22,11 @@
 #include<ELT/elt.h>
 #include<ELT/graphic.h>
 
+
+
+#define COMPILED_VERSION(major, minor, revision) EX_STR(major)EX_TEXT(".")EX_STR(minor)EX_TEXT(".")EX_STR(revision)
+
+
 /**
  *
  */
@@ -91,12 +96,30 @@ extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap
 /**/
 extern const float quad[4][3];
 
+
+
+
 /**
  *	Initialize default function pointer.
  *	It will set all the rendering function pointer
  *	to the OpenGL version.
  */
-void glslview_default_init(void);
+extern void glslview_default_init(void);
+
+/**/
+extern int glslview_init(int argc, const char** argv);
+
+/**/
+extern const char* glslview_getVersion(void);
+
+/**/
+extern void glslview_catchSig(int signal);
+
+/**/
+extern int glslview_readargument(int argc, const char** argv, int pass);
+
+
+
 
 /**
  *
@@ -141,6 +164,21 @@ extern int privatefprintf(const char* format,...);
 extern int debugprintf(const char* format,...);
 
 
+typedef struct glslview_shader_t{
+	UniformLocation uniform;
+	ExShader shader;
+}glslviewShader;
+
+typedef struct glslview_texture_t{
+	ExTexture texture;
+}glslviewTexture;
+
+
+/**/
+extern unsigned int vao;						/*	*/
+extern unsigned int vbo;						/*	*/
+extern const char* vertex;
+
 extern ExWin window;								/*	Window.	*/
 extern ExBoolean fullscreen ;						/*	Set window fullscreen.	*/
 extern ExBoolean verbose;							/*	enable verbose.	*/
@@ -154,6 +192,9 @@ extern char* inotifybuf;							/*	*/
 extern unsigned int numFragPaths;					/*	*/
 extern unsigned int numShaderPass;
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
+extern UniformLocation uniform[32];				/*	uniform.	*/
+extern ExShader shader[32];						/*	*/
+extern glslviewShader* shaders;
 extern unsigned int fbo;							/*	*/
 extern unsigned int ftextype;
 extern unsigned int ftexinternalformat;
