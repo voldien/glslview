@@ -81,8 +81,8 @@ const float quad[4][3] = {
 
 
 
-
-ExWin window = NULL;							/*	Window.	*/
+SDL_GLContext glc;
+SDL_Window* window = NULL;							/*	Window.	*/
 ExBoolean fullscreen = 0;						/*	Set window fullscreen.	*/
 ExBoolean verbose = 0;							/*	enable verbose.	*/
 ExBoolean debug = 0;							/*	enable debugging.	*/
@@ -538,6 +538,7 @@ int main(int argc, const char** argv){
 
 	float ttime;
 
+	SDL_DisplayMode displaymode;
 	ExSize size;								/*	*/
 	ExChar title[512];							/*	*/
 
@@ -585,8 +586,9 @@ int main(int argc, const char** argv){
 	printf("==================\n\n");
 
 	/*	Initialize ELT.	*/
-	privatefprintf("ELT version %s\n", ExGetVersion());
-	if(ExInit(EX_INIT_NONE) == 0){
+	//SDL_GetVersion(title);
+	privatefprintf("SDL version %s\n", title);
+	if(SDL_Init(SDL_INIT_EVERYTHING) != 0){
 		status = EXIT_FAILURE;
 		goto error;
 	}
@@ -601,21 +603,21 @@ int main(int argc, const char** argv){
 
 
 	/*	Create window. */
-	ExGetPrimaryScreenSize(&size);
-	size.width /= 2;
-	size.height /= 2;
-	window = SDL_CreateWindow("glslview", size.width / 4, size.height / 4, size.width / 2, size.height / 2, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	SDL_GetCurrentDisplayMode(0, &displaymode);
+	displaymode.w /= 2;
+	displaymode.h /= 2;
+	window = SDL_CreateWindow("glslview", displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if(!window){
 		status = EXIT_FAILURE;
 		goto error;
 	}
+	SDL_GL_MakeCurrent(window, SDL_GL_CreateContext(window));
 
 	/*	*/
-	ExShowWindow(window);
-	ExGetApplicationName(title, sizeof(title));
-	ExSetWindowTitle(window, title);
-	ExSetWindowPos(window, size.width / 2, size.height / 2);
-	ExSetWindowSize(window, size.width, size.height);
+	SDL_ShowWindow(window);
+	SDL_SetWindowTitle(window, title);
+	SDL_SetWindowPosition(window, size.width / 2, size.height / 2);
+	SDL_SetWindowSize(window, size.width, size.height );
 
 
 	/*	Display OpenGL information.	*/
