@@ -17,6 +17,7 @@
 
 */
 #include"internal.h"
+#include<SDL2/SDL.h>
 
 /*	TODO remove glsl function later.	*/
 #include<GL/gl.h>
@@ -57,19 +58,18 @@ void glslview_default_init(void){
 	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
 	glslview_update_uniforms = glslview_update_uniforms_gl;
 	glslview_set_viewport = glslview_set_viewport_gl;
-	glslview_swapbuffer = ExSwapBuffers;
+	glslview_swapbuffer = SDL_GL_SwapWindow;
 }
 
 
 
 int glslview_init(int argc, const char** argv){
-	ERESULT status = EXIT_SUCCESS;				/*	*/
-	unsigned int isPipe;						/*	*/
+	int status = EXIT_SUCCESS;					/*	*/
 	long int srclen;							/*	*/
 
-	ExSize size;								/*	*/
-	ExChar title[512];							/*	*/
-
+	SDL_DisplayMode displaymode;
+	char title[512];							/*	*/
+	int glatt;
 	char* fragData = NULL;						/*	*/
 	int x;										/*	*/
 
@@ -89,9 +89,9 @@ int glslview_init(int argc, const char** argv){
 	printf("glslview v%d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
 	printf("==================\n\n");
 
-	/*	Initialize ELT.	*/
-	privatefprintf("ELT version %s\n", ExGetVersion());
-	if(ExInit(EX_INIT_NONE) == 0){
+	/*	Initialize SDL.	*/
+	//privatefprintf("ELT version %s\n", ExGetVersion());
+	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0){
 		status = EXIT_FAILURE;
 		return status;
 	}
@@ -106,28 +106,31 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Create window. */
-	ExGetPrimaryScreenSize(&size);
-	size.width /= 2;
-	size.height /= 2;
-	window = ExCreateWindow(size.width / 2, size.height / 2, size.width, size.height, rendererapi);
+	SDL_GetCurrentDisplayMode(0, &displaymode);
+	displaymode.w /= 2;
+	displaymode.h /= 2;
+	sprintf(title, "glslview %s", glslview_getVersion());
+	window = SDL_CreateWindow(title, displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if(!window){
 		status = EXIT_FAILURE;
 		return status;
 	}
+	glc = SDL_GL_CreateContext(window);
+	SDL_GL_MakeCurrent(window, glc);
 
 	/*	*/
-	ExShowWindow(window);
-	ExGetApplicationName(title, sizeof(title));
-	ExSetWindowTitle(window, title);
-	ExSetWindowPos(window, size.width / 2, size.height / 2);
-	ExSetWindowSize(window, size.width, size.height);
+	SDL_ShowWindow(window);
+	SDL_SetWindowTitle(window, title);
+	SDL_SetWindowPosition(window, displaymode.w / 2, displaymode.h / 2);
+	SDL_SetWindowSize(window, displaymode.w, displaymode.h );
 
 
 	/*	Display OpenGL information.	*/
 	privatefprintf("-------------- OpenGL Information ------------------\n");
-	privatefprintf("OpenGL version %d %s\n", ExGetOpenGLVersion(NULL, NULL), "");
-	privatefprintf("OpenGL shader language version %d\n", ExGetOpenGLShadingVersion());
-	privatefprintf("OpenGL RENDERER %s\n\n", glGetString(GL_RENDERER));
+	privatefprintf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
+	privatefprintf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
+	privatefprintf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	privatefprintf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
 
 	/*	*/
 	if(glslview_readargument(argc, argv, 1) == 2){
@@ -138,8 +141,8 @@ int glslview_init(int argc, const char** argv){
 
 	/*	Load shader fragment source code.	*/
 	privatefprintf("----------- fetching source code ----------\n");
-	shaders = malloc(sizeof(glslviewShader) * numFragPaths);
-	memset(shader, 0, sizeof(glslviewShader) * numFragPaths);
+	shaders = malloc(sizeof(glslviewShaderCollection) * numFragPaths);
+	memset(shaders, 0, sizeof(glslviewShaderCollection) * numFragPaths);
 	/**/
 	if(isPipe && !use_stdin_as_buffer){
 		char buf[4096];
@@ -154,17 +157,17 @@ int glslview_init(int argc, const char** argv){
 	}
 	else{
 		for(x = 0; x < numFragPaths; x++){
-			srclen = ExLoadFile((const char*)fragPath[x], (void**)&fragData);
+			srclen = glslview_loadfile((const char*)fragPath[x], (void**)&fragData);
 			debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
 
 			/*	compile shader.	*/
 			privatefprintf("----------- compiling source code ----------\n");
-			if(ExLoadShaderv(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
+			if(glslview_create_shader(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
 				fprintf(stderr, "Invalid shader.\n");
 				status = EXIT_FAILURE;
 				return status;
 			}else{
-				glslview_update_shader_uniform(&uniform[x], &shader[x], size.width, size.height);
+				glslview_update_shader_uniform(&uniform[x], &shader[x], displaymode.w, displaymode.h);
 			}
 
 			if( srclen < 0 ){
@@ -188,9 +191,9 @@ int glslview_init(int argc, const char** argv){
 
 	/*	generate vertex array for quad.	*/
 	privatefprintf("----------- constructing rendering quad. ----------\n");
-	ExGenVertexArrays(1, &vao);
+	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
-	ExGenBuffers(1, &vbo);
+	glGenBuffers(1, &vbo);
 
 	/*	*/
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -205,30 +208,26 @@ int glslview_init(int argc, const char** argv){
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
-	glDepthMask(FALSE);
+	glDepthMask(GL_FALSE);
 	glDisable(GL_STENCIL_TEST);
 
-	/*	*/
-	ExGetWindowSizev(window, &size);
-	glViewport(0, 0, size.width, size.height);
+	glViewport(0, 0, displaymode.w, displaymode.h);
 
 	/*	*/
-
 	glBindVertexArray(vao);
 
 
 
-
 	/*	*/
-	if(ExOpenGLGetAttribute(EX_OPENGL_ALPHA_SIZE, NULL) > 0){
+	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
+	if(glatt > 0){
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glEnable(GL_ALPHA_TEST);
-		glColorMask(TRUE, TRUE, TRUE, TRUE);
-		ExSetGLTransparent(window, EX_GLTRANSPARENT_ENABLE);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	}
 	else{
 		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glColorMask(TRUE, TRUE, TRUE, FALSE);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 		glDisable(GL_ALPHA_TEST);
 	}
 
@@ -239,6 +238,41 @@ int glslview_init(int argc, const char** argv){
 const char* glslview_getVersion(void){
 	return COMPILED_VERSION(GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
 }
+
+
+
+
+long int glslview_loadfile(const char* cfilename, void** bufferptr){
+	FILE*f;
+	void* buffer;
+	long length;
+	long int pos;
+	*bufferptr = NULL;
+
+	if(!cfilename || strlen(cfilename) == 0){
+		return -1;
+	}
+
+	f = fopen(cfilename, "rb");
+	if(!f){
+		return -1;
+	}
+
+	/**/
+    pos = ftell(f);
+    fseek(f, 0,SEEK_END);
+    length = ftell(f);
+    fseek(f, pos, SEEK_SET);
+
+    /**/
+	buffer = (char*)malloc(length + 1);
+	((char*)buffer)[length] = 0;
+	length = fread(buffer, 1, length,f);
+	fclose(f);
+	*bufferptr = buffer;
+	return length;
+}
+
 
 /**/
 int privatefprintf(const char* format,...){

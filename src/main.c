@@ -25,6 +25,8 @@
 #include<regex.h>
 
 #include<getopt.h>
+#include<stdio.h>
+#include<stdlib.h>
 #include<string.h>
 #include<errno.h>
 #include<unistd.h>
@@ -78,11 +80,10 @@ unsigned int vbo = 0;						/*	*/
 SDL_GLContext glc;
 SDL_Window* window = NULL;						/*	Window.	*/
 SDL_Window* drawable = NULL;					/*	Window.	*/
-ExBoolean fullscreen = 0;						/*	Set window fullscreen.	*/
-ExBoolean verbose = 0;							/*	enable verbose.	*/
-ExBoolean debug = 0;							/*	enable debugging.	*/
-ExBoolean compression = 0;						/*	Use compression.	*/
-unsigned int rendererapi = EX_OPENGL_CORE;		/*	Rendering API.	*/
+int fullscreen = 0;						/*	Set window fullscreen.	*/
+int verbose = 0;							/*	enable verbose.	*/
+int debug = 0;							/*	enable debugging.	*/
+int compression = 0;						/*	Use compression.	*/
 unsigned int isAlive = 1;						/*	*/
 int ifd = -1;									/*	inotify file descriptor.*/
 int wd = -1;									/*	inotify watch directory.	*/
@@ -91,16 +92,17 @@ unsigned int numFragPaths = 0;					/*	*/
 unsigned int numShaderPass = 0;
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
 UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
-ExShader shader[32] = {{0}};						/*	*/
-glslviewShader* shaders = NULL;
+glslviewShader shader[32] = {{0}};						/*	*/
+glslviewShaderCollection* shaders = NULL;
 unsigned int fbo = 0;							/*	*/
 unsigned int ftextype = GL_FLOAT;
 unsigned int ftexinternalformat = GL_RGBA;
 unsigned int ftexformat = GL_RGBA;
-ExTexture fbackbuffertex = {0};					/*	framebuffer texture for backbuffer uniform variable.	*/
-ExTexture textures[8] = {{0}};					/*	*/
+glslviewTexture fbackbuffertex = {0};					/*	framebuffer texture for backbuffer uniform variable.	*/
+glslviewTexture textures[8] = {{0}};					/*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
 unsigned int nextTex = 0;						/*	*/
+unsigned int isPipe;
 unsigned int use_stdin_as_buffer = 0;			/*	*/
 int stdin_buffer_size = 1;						/*	*/
 
@@ -165,7 +167,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				return (2);
 			}
 			case 'V':
-				verbose = TRUE;
+				verbose = SDL_TRUE;
 				privatefprintf("Enable verbose.\n");
 				break;
 			case 'h':{
@@ -176,20 +178,20 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			}break;
 			case 'a':
 				privatefprintf("Enable alpha buffer.\n");
-				ExOpenGLSetAttribute(EX_OPENGL_ALPHA_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 				break;
 			case 'S':
 				privatefprintf("Set framebuffer to sRGB color space.\n");
-				ExOpenGLSetAttribute(EX_OPENGL_FRAMEBUFFER_SRGB_CAPABLE, TRUE);
+				SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, SDL_TRUE);
 				glEnable(GL_FRAMEBUFFER_SRGB);
 				break;
 			case 'A':
-				ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLEBUFFERS, TRUE);
+				SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, SDL_TRUE);
 				if(optarg){
-					ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, atoi(optarg));
+					SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, atoi(optarg));
 				}
 				else{
-					ExOpenGLSetAttribute(EX_OPENGL_MULTISAMPLESAMPLES, 2);
+					SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
 				}
 				glEnable(GL_MULTISAMPLE);
 				privatefprintf("Set multisample framebuffer : %d samples.\n", optarg ? atoi(optarg) : 2);
@@ -198,24 +200,23 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			case 'r':
 				if(optarg != NULL){
 					if(strcmp(optarg, "opengl") == 0){
-						rendererapi = EX_OPENGL;
+						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 						privatefprintf("Set rendering API to OpenGL.\n");
 					}
 					if(strcmp(optarg, "openglcore") == 0){
-						rendererapi = EX_OPENGL_CORE;
+						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 						privatefprintf("Set rendering API to OpenGL core.\n");
 					}
 					else if(strcmp(optarg, "opengles") == 0){
-						rendererapi = EX_OPENGLES;
+						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 						privatefprintf("Set rendering API to OpenGL-ES.\n");
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
-						rendererapi = EX_VULKAN;
 						glslview_resize_screen = glslview_resize_screen_vk;
 						glslview_displaygraphic = glslview_displaygraphic_vk;
 						glslview_update_shader_uniform = glslview_update_shader_uniform_vk;
 						glslview_update_uniforms = glslview_update_uniforms_vk;
-						glslview_swapbuffer = ExSwapBuffers;
+						glslview_swapbuffer = SDL_GL_SwapWindow;
 						privatefprintf("Set rendering API to Vulkan.\n");
 					}
 				}
@@ -231,8 +232,8 @@ int glslview_readargument(int argc, const char** argv, int pass){
 						continue;
 					}
 					/*	Set opengl version requested by input argument.	*/
-					ExOpenGLSetAttribute(EX_OPENGL_MAJOR_VERSION, strtol(optarg, NULL, 10) / 100);
-					ExOpenGLSetAttribute(EX_OPENGL_MINOR_VERSION, (strtol(optarg, NULL, 10) % 100 ) / 10);
+					SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, strtol(optarg, NULL, 10) / 100);
+					SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, (strtol(optarg, NULL, 10) % 100 ) / 10);
 					privatefprintf("Set OpenGL version %d.%d0", strtol(optarg, NULL, 10) / 100, (strtol(optarg, NULL, 10) % 100) / 10);
 				}
 				break;
@@ -282,34 +283,37 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			case 'F':	/*	Fullscreen.	*/
 				fullscreen = 1;
 				privatefprintf("Set fullscreen.\n");
-				ExGLFullScreen(1, window, 0, NULL);
+				SDL_GetWindowDisplayIndex(window);
+				SDL_SetWindowFullscreen(window, 0);
 				break;
 			case 'w':{	/*	Set as desktop wallpaper.	*/	/*	TODO fix for other distro other than Ubuntu.*/
-				ExSize size;
-				ExPoint location = {0};
-				ExRect rect;
+				SDL_Point size;
+				SDL_Point location = {0};
+				SDL_Rect rect;
 				int index = 0;
-				ExWin desktop = ExGetDesktopWindow();
+				SDL_Window* desktop = NULL;
 				if(desktop){
-					ExGetWindowSizev(desktop, &size);
-					ExSetWindowParent(desktop, window);
+					SDL_GetWindowSize(desktop, &size.x,size.y);
+					//SDL_SetWindowPosition()
 
 					if(optarg){
 						if(strlen(optarg) > 0){
 							index = strtol(optarg, NULL, 10);
 							privatefprintf("Monitor screen index %d selected for wallpaper.\n", index);
+							/*
 							ExGetScreenRect(index, &rect);
 							location.x = rect.x;
 							location.y = rect.y;
 							size.width = rect.width;
 							size.height = rect.height;
+							*/
 						}
 					}
 
 					/*	Resize window to fix desktop view.	*/
-					privatefprintf("Set view as desktop wallpaper %d.%d, %dx%d.\n", location.x, location.y, size.width, size.height);
-					ExSetWindowSize(window, size.width, size.height);
-					ExSetWindowPos(window, location.x, location.y);
+					//privatefprintf("Set view as desktop wallpaper %d.%d, %dx%d.\n", location.x, location.y, size.width, size.height);
+					//ExSetWindowSize(window, size.width, size.height);
+					//ExSetWindowPos(window, location.x, location.y);
 					//ExMakeDesktopWindow(window);
 					/*	TODO disable window flag events.	*/
 					/*	ExSetWindowFlag(window, ExGetWindowFlag(window));	*/
@@ -321,10 +325,10 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			}break;
 			case 's':	/*	Enable OpenGL V Sync.	*/
 				privatefprintf("Enable V-Sync.\n");
-				ExOpenGLSetVSync(TRUE, ExGetCurrentGLDrawable());
+				SDL_GL_SetSwapInterval(16);
 				break;
 			case 'n':{
-				char buf[PATH_MAX];
+				char buf[4096];
 				int x;
 				privatefprintf("Initialize inotify.\n");
 
@@ -337,9 +341,12 @@ int glslview_readargument(int argc, const char** argv, int pass){
 
 				/*	Get absolute path for inotify watch.	*/
 				for(x = 0; x < numFragPaths; x++){
-					ExGetAbsolutePath(fragPath[x], buf, sizeof(buf));
-					ExGetDirectory(buf, buf, sizeof(buf));
+					memcpy(buf, fragPath[x], strlen(fragPath[x]) + 1);
+					dirname(buf);
+
+
 					if(( wd = inotify_add_watch(ifd, buf, IN_MODIFY | IN_DELETE)) < 0){
+						fprintf(stderr, "Failed to add inotify %s %s.\n", buf, strerror(errno));
 						exit(EXIT_FAILURE);
 					}
 					privatefprintf("Added %s directory to inotify watch.\n\n", buf);
@@ -416,7 +423,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 							}
 
 							/*	Create opengl 2D texture.	*/
-							ExCreateTexture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
+							glslview_create_texture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
 									height, 0, gformat, type, bitdata);
 
 							nextTex++;
@@ -452,7 +459,7 @@ void glslview_catchSig(int signal){
 	switch(signal){
 	case SIGINT:
 	case SIGQUIT:
-		isAlive = FALSE;
+		isAlive = SDL_FALSE;
 		break;
 	case SIGTERM:
 	case SIGABRT:
@@ -481,28 +488,15 @@ void glslview_terminate(void){
 
 
 int main(int argc, const char** argv){
-	ERESULT status = EXIT_SUCCESS;				/*	*/
-
-	ExEvent event = {0};						/*	*/
-	ExWin drawable = NULL;						/*	*/
-
-
-	unsigned int isPipe;						/*	*/
-
+	int status = EXIT_SUCCESS;				/*	*/
+	SDL_Event event = {0};						/*	*/
 	float ttime;
-
-
-	ExSize size;								/*	*/
-
-
+	SDL_Point size;								/*	*/
 	char* fragData = NULL;						/*	*/
 	int x;										/*	*/
 
-
-
-
 	/**/
-	long int private_start = ExGetHiResTime();	/*	*/
+	long int private_start;	/*	*/
 	long int pretime;
 	long int deltatime;
 	int visable = 1;
@@ -523,12 +517,12 @@ int main(int argc, const char** argv){
 		goto error;
 	}
 
-	drawable = ExGetCurrentGLDrawable();
+	drawable = SDL_GL_GetCurrentWindow();
 
 
 	/*	*/
-	private_start = ExGetHiResTime();
-	pretime = ExGetHiResTime();
+	private_start = SDL_GetPerformanceCounter();
+	pretime = SDL_GetPerformanceCounter();
 
 
 
@@ -542,14 +536,14 @@ int main(int argc, const char** argv){
 
 
 	/*	*/
-	if(ExIsTexture(&fbackbuffertex)){
+	if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
 		glActiveTexture(GL_TEXTURE0 + numTextures);
 		glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
 	}
 
 	/*	Bind all textures.	*/
 	for(x = 0; x < numTextures; x++){
-		if(ExIsTexture(&textures[x])){
+		if(glIsTexture(textures[x].texture) == GL_TRUE){
 			privatefprintf("Binding texture %d.\n", x);
 			glActiveTexture(GL_TEXTURE0 + x);
 			glBindTexture(textures[x].target, textures[x].texture);
@@ -560,80 +554,63 @@ int main(int argc, const char** argv){
 	while(isAlive){
 
 		/**/
-		while(ExPollEvent(&event)){
+		while(SDL_PollEvent(&event)){
 
 			/**/
-			if(event.event & EX_EVENT_KEY_PRESSED){
-				if(event.key.code == EXK_ENTER && event.key.ctrl){
+			if(event.type == SDL_KEYDOWN){
+				if(event.key.keysym.sym == SDLK_KP_ENTER && (event.key.keysym.mod & ( KMOD_LCTRL | KMOD_RCTRL) )){
 					fullscreen = ~fullscreen & 0x1;
-					ExGLFullScreen(fullscreen, window, 0, NULL);
+					SDL_SetWindowFullscreen( fullscreen ? window : NULL, 0);
 				}
 			}
 
 			/**/
-			if(event.event & EX_EVENT_MOUSE_MOTION){
-				ExPoint location;
-				ExGetMouseState(&location.x, &location.y);
-				float mouse[2] = {location.x , -location.y };
+			if(event.type == SDL_MOUSEMOTION){
+
+				float mouse[2];// = {location.x , -location.y };
 				for(x = 0; x < numShaderPass; x++){
 					glUniform2fv(uniform[x].mouse, 1, &mouse[0]);
 				}
 			}
 
-			if( ( event.event & EX_EVENT_RESIZE) || (event.event & EX_EVENT_ON_FOCUSE)  ||  (event.event & EX_EVENT_SIZE) ){
-				glslview_set_viewport(event.size.width, event.size.height);
-				for(x = 0; x < numShaderPass; x++){
-					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
+			if(event.type == SDL_WINDOWEVENT){
+				switch(event.window.event){
+				case SDL_WINDOWEVENT_RESIZED:
+					glslview_set_viewport(event.window.data1, event.window.data2);
+					for(x = 0; x < numShaderPass; x++){
+						glslview_resize_screen(&event.window.data1, &uniform[x], &shader[x], &fbackbuffertex);
+					}
+					break;
+				case SDL_WINDOWEVENT_MOVED:
+					for(x = 0; x < numShaderPass; x++){
+						if(uniform[x].offset != -1){
+							glUniform2i(uniform[x].offset, 0, 0);
+						}
+					}
+					break;
+				case SDL_WINDOWEVENT_SHOWN:
+				case SDL_WINDOWEVENT_EXPOSED:
+					visable = SDL_TRUE;
+					break;
+				case SDL_WINDOWEVENT_HIDDEN:
+					visable = SDL_FALSE;
+					break;
+				default:
+					break;
 				}
 			}
 
-			if(event.event & EX_EVENT_ON_FOCUSE){
-				glslview_set_viewport(event.size.width, event.size.height);
-				for(x = 0; x < numShaderPass; x++){
-					glslview_resize_screen(&event, &uniform[x], &shader[x], &fbackbuffertex);
-				}
-			}
-
-			if(event.event & EX_EVENT_ON_UNFOCUSE){
-
-			}
-
-			if(event.event & EX_EVENT_EXPOSE){
-				visable = 1;
-			}
-
+			/*
 			if( ( event.event & EX_EVENT_WINDOW_DESTROYED ) && event.destroy.window == window){
 				isAlive = FALSE;
 				goto error;
 			}
-
-			if( event.event & EX_EVENT_MOUSEWHEEL ){
-
-			}
-
-			if( event.event & EX_EVENT_WINDOW_HIDE){
-				printf("window hidden.\n");
-				visable = FALSE;
-			}
-			if(event.event & EX_EVENT_WINDOW_SHOW){
-				printf("window showing.\n");
-				visable = TRUE;
-			}
-
-			if( event.event & EX_EVENT_WINDOW_MOVE){
-				for(x = 0; x < numShaderPass; x++){
-					if(uniform[x].offset != -1){
-						glUniform2i(uniform[x].offset, 0, 0);
-					}
-				}
-			}
+			*/
 		}
 
-
-
-		ttime = (float)(( ExGetHiResTime() - private_start) / 1E9);
-		deltatime = ExGetHiResTime() - pretime;
-		pretime = ExGetHiResTime();
+		ttime = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9);
+		deltatime = SDL_GetPerformanceCounter() - pretime;
+		pretime = SDL_GetPerformanceCounter();
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
 			fd_set readfd;
@@ -657,29 +634,33 @@ int main(int argc, const char** argv){
 				int nbytes;
 				/**/
 				while( (nbytes = read(ifd, &ionevent, EVENT_BUF_LEN)) > 0){
+					char tmppath[4096];
 					privatefprintf("inotify event fetching.\n");
 					read(ifd, &buffer, ionevent.len);
 
-					printf(ionevent.name);
+					printf("%s\n",ionevent.name);
 					if(ionevent.mask & IN_MODIFY){
 
 						for(x = 0; x < numFragPaths; x++){
-							if(strcmp(ionevent.name, ExGetBaseName( fragPath[x], NULL, 0) ) == 0){
+							memcpy(tmppath, fragPath[x], strlen(fragPath[x]) + 1);
+							basename(tmppath);
+							printf(tmppath);
+							if(strcmp(ionevent.name, tmppath ) == 0){
 								privatefprintf("Updating %s\n", fragPath[x]);
 
-								ExDeleteShaderProgram(&shader[x]);
+								glDeleteProgram(shader[x].program);
 								memset(&shader[x], 0, sizeof(shader[0]));
 
-								ExLoadFile((const ExChar*)fragPath[x], (void**)&fragData);
-								if(ExLoadShaderv(&shader[x], vertex, (const char*)fragData, NULL, NULL, NULL)){
+								glslview_loadfile((const char*)fragPath[x], (void**)&fragData);
+								if(glslview_create_shader(&shader[x], vertex, (const char*)fragData, NULL, NULL, NULL)){
 									/**/
 								}
 
 								free(fragData);
 
-								ExGetWindowSizev(window, &size);
+								SDL_GetWindowSize(window, &size.x, &size.y);
 								glUseProgram(shader[x].program);
-								glslview_update_shader_uniform(&uniform[x], &shader[x], size.width, size.height);
+								glslview_update_shader_uniform(&uniform[x], &shader[x], size.x, size.y);
 								break;
 							}
 						}
@@ -697,8 +678,9 @@ int main(int argc, const char** argv){
 
 			if(visable || renderInBackground){
 				glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
-			}/*	render passes	*/
-
+			}else{/*	render passes	*/
+				sleep(1);
+			}
 
 		}/*	render condition.	*/
 
@@ -712,34 +694,34 @@ int main(int argc, const char** argv){
 
 
 	/*	Release OpenGL resources.	*/
-	if(ExGetCurrentOpenGLContext()){
+	if(glc != NULL){
 		for(x = 0; x < numShaderPass; x++){
 			if(glIsProgram(shader[x].program) == GL_TRUE){
-				ExDeleteShaderProgram(&shader[x]);
+				glDeleteProgram(1, &shader[x].program);
 			}
 		}
-		if( glIsVertexArray(vao) == GL_TRUE){
+		if(glIsVertexArray(vao) == GL_TRUE){
 			glDeleteVertexArrays(1, &vao);
 		}
-		if( glIsBuffer(vbo) == GL_TRUE ){
+		if(glIsBuffer(vbo) == GL_TRUE ){
 			glDeleteBuffers(1, &vbo);
 		}
 
 		/*	textures.	*/
 		for(x = 0; x < numTextures; x++){
-			if(ExIsTexture(&textures[x])){
-				ExDeleteTexture(&textures[x]);
+			if(glIsTexture(textures[x].texture) == GL_TRUE){
+				glDeleteTextures(1, &textures[x].texture);
 			}
 		}
 
-		if(ExIsTexture(&fbackbuffertex)){
-			ExDeleteTexture(&fbackbuffertex);
+		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
+			glDeleteTextures(1, &fbackbuffertex.texture);
 		}
 
-		ExDestroyGLContext(window, ExGetCurrentOpenGLContext());
+		SDL_GL_DeleteContext(glc);
 	}
 	if(window){
-		ExDestroyWindow(window);
+		SDL_DestroyWindow(window);
 	}
 
 	/*	*/
@@ -748,6 +730,6 @@ int main(int argc, const char** argv){
 		free(inotifybuf);
 		close(ifd);
 	}
-	ExShutDown();
+	SDL_Quit();
 	return status;
 }
