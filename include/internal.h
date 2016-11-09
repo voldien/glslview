@@ -40,11 +40,11 @@
  */
 typedef struct uniform_location_t{
 	int time;			/*	time in seconds as float.	*/
-	int resolution;	/*	resolution. */
+	int resolution;		/*	resolution. */
 	int deltatime;		/*	delta time.	*/
 	int mouse;			/*	mouse.	*/
-	int offset;		/*	offset.	*/
-	int backbuffer;	/*	previous buffer.	*/
+	int offset;			/*	offset.	*/
+	int backbuffer;		/*	previous buffer.	*/
 	int stdin;			/*	stdin data.	*/
 	int tex0;			/*	texture 0.	*/
 	int tex1;			/*	texture 1.	*/
@@ -65,12 +65,12 @@ typedef struct uniform_location_t{
 }UniformLocation;
 
 typedef struct glslview_texture_t{
-	unsigned int target;
-	unsigned int texture;
-	unsigned int width;
-	unsigned int height;
-	unsigned int internalformat;
-	unsigned int type;
+	unsigned int target;			/**/
+	unsigned int texture;			/**/
+	unsigned int width;				/**/
+	unsigned int height;			/**/
+	unsigned int internalformat;	/**/
+	unsigned int type;				/**/
 }glslviewTexture;
 
 typedef struct glslview_shader_t{
@@ -133,10 +133,19 @@ extern const float quad[4][3];
  */
 extern void glslview_default_init(void);
 
-/**/
+/**
+ *	Initialize glslsview.
+ *
+ *	@Return
+ *
+ */
 extern int glslview_init(int argc, const char** argv);
 
-/**/
+/**
+ *	Get glslview version.
+ *
+ *	@Return
+ */
 extern const char* glslview_getVersion(void);
 
 /**/
