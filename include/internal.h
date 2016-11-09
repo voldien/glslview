@@ -84,7 +84,14 @@ typedef struct glslview_shader_t{
 }glslviewShader;
 
 
+typedef struct glslview_shader_collection_t{
+	UniformLocation uniform;
+	glslviewShader shader;
+}glslviewShaderCollection;
 
+typedef struct glslview_texture_collection_t{
+	glslviewTexture texture;
+}glslviewTextureCollection;
 
 
 
@@ -185,7 +192,7 @@ void glslview_set_viewport_vk(unsigned int width, unsigned int height);
 
 
 
-void glslview_rendergraphic(SDL_Window* drawable, glslviewShader* shader, UniformLocation* location, float ttime, float deltatime);
+void glslview_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
 
 
 
@@ -196,14 +203,7 @@ extern int privatefprintf(const char* format,...);
 extern int debugprintf(const char* format,...);
 
 
-typedef struct glslview_shader_collection_t{
-	UniformLocation uniform;
-	glslviewShader shader;
-}glslviewShaderCollection;
 
-typedef struct glslview_texture_collection_t{
-	glslviewTexture texture;
-}glslviewTextureCollection;
 
 
 /**/
@@ -225,8 +225,8 @@ extern char* inotifybuf;							/*	*/
 extern unsigned int numFragPaths;					/*	*/
 extern unsigned int numShaderPass;
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
-extern UniformLocation uniform[32];				/*	uniform.	*/
-extern glslviewShader shader[32];						/*	*/
+//extern UniformLocation uniform[32];				/*	uniform.	*/
+//extern glslviewShader shader[32];						/*	*/
 extern glslviewShaderCollection* shaders;
 extern unsigned int fbo;							/*	*/
 extern unsigned int ftextype;

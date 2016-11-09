@@ -288,17 +288,17 @@ void glslview_set_viewport_gl(unsigned int width, unsigned int height){
 
 
 
-void glslview_rendergraphic(SDL_Window* drawable, glslviewShader* shader, UniformLocation* uniform, float ttime, float deltatime){
+void glslview_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
 	int x;
 
 	for(x = 0; x < numShaderPass; x++){
 
-		glUseProgram(shader[x].program);
+		glUseProgram(shaders[x].shader.program);
 
-		glslview_update_uniforms(&uniform[x], &shader[x], ttime, deltatime);
+		glslview_update_uniforms(&shaders[x].uniform, &shaders[x].shader, ttime, deltatime);
 		glslview_displaygraphic(drawable);
 
-		if(uniform[x].backbuffer != -1){
+		if(shaders[x].uniform.backbuffer != -1){
 			glActiveTexture(GL_TEXTURE0 + numTextures);
 			glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
 			glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);

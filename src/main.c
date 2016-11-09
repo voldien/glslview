@@ -92,8 +92,8 @@ char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
 unsigned int numShaderPass = 0;
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
-UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
-glslviewShader shader[32] = {{0}};						/*	*/
+//UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
+//glslviewShader shader[32] = {{0}};						/*	*/
 glslviewShaderCollection* shaders = NULL;
 unsigned int fbo = 0;							/*	*/
 unsigned int ftextype = GL_FLOAT;
@@ -570,7 +570,7 @@ int main(int argc, const char** argv){
 
 				float mouse[2];// = {location.x , -location.y };
 				for(x = 0; x < numShaderPass; x++){
-					glUniform2fv(uniform[x].mouse, 1, &mouse[0]);
+					glUniform2fv(shaders[x].uniform.mouse, 1, &mouse[0]);
 				}
 			}
 
@@ -579,13 +579,13 @@ int main(int argc, const char** argv){
 				case SDL_WINDOWEVENT_RESIZED:
 					glslview_set_viewport(event.window.data1, event.window.data2);
 					for(x = 0; x < numShaderPass; x++){
-						glslview_resize_screen(&event.window.data1, &uniform[x], &shader[x], &fbackbuffertex);
+						glslview_resize_screen(&event.window.data1, &shaders[x].uniform, &shaders[x], &fbackbuffertex);
 					}
 					break;
 				case SDL_WINDOWEVENT_MOVED:
 					for(x = 0; x < numShaderPass; x++){
-						if(uniform[x].offset != -1){
-							glUniform2i(uniform[x].offset, 0, 0);
+						if(shaders[x].uniform.offset != -1){
+							glUniform2i(shaders[x].uniform.offset, 0, 0);
 						}
 					}
 					break;
@@ -625,7 +625,7 @@ int main(int argc, const char** argv){
 			}
 			else if(ret == 0){
 				if(visable || renderInBackground){
-					glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
+					glslview_rendergraphic(drawable, shaders, ttime, deltatime);
 				}
 			}else{
 				struct inotify_event ionevent;
@@ -650,19 +650,19 @@ int main(int argc, const char** argv){
 							if(strcmp(ionevent.name, ptmp ) == 0){
 								privatefprintf("Updating %s\n", fragPath[x]);
 
-								glDeleteProgram(shader[x].program);
-								memset(&shader[x], 0, sizeof(shader[0]));
+								glDeleteProgram(shaders[x].shader.program);
+								memset(&shaders[x].shader, 0, sizeof(glslviewShader));
 
 								glslview_loadfile((const char*)fragPath[x], (void**)&fragData);
-								if(glslview_create_shader(&shader[x], vertex, (const char*)fragData, NULL, NULL, NULL)){
+								if(glslview_create_shader(&shaders[x].shader, vertex, (const char*)fragData, NULL, NULL, NULL)){
 									/**/
 								}
 
 								free(fragData);
 
 								SDL_GetWindowSize(window, &size.x, &size.y);
-								glUseProgram(shader[x].program);
-								glslview_update_shader_uniform(&uniform[x], &shader[x], size.x, size.y);
+								glUseProgram(shaders[x].shader.program);
+								glslview_update_shader_uniform(&shaders[x].uniform, &shaders[x].uniform, size.x, size.y);
 								break;
 							}
 						}
@@ -679,7 +679,7 @@ int main(int argc, const char** argv){
 		else{
 
 			if(visable || renderInBackground){
-				glslview_rendergraphic(drawable, shader, uniform, ttime, deltatime);
+				glslview_rendergraphic(drawable, shaders, ttime, deltatime);
 			}else{/*	render passes	*/
 				sleep(1);
 			}
@@ -698,8 +698,8 @@ int main(int argc, const char** argv){
 	/*	Release OpenGL resources.	*/
 	if(glc != NULL){
 		for(x = 0; x < numShaderPass; x++){
-			if(glIsProgram(shader[x].program) == GL_TRUE){
-				glDeleteProgram(1, &shader[x].program);
+			if(glIsProgram(shaders[x].shader.program) == GL_TRUE){
+				glDeleteProgram(1, &shaders[x].shader.program);
 			}
 		}
 		if(glIsVertexArray(vao) == GL_TRUE){

@@ -162,12 +162,12 @@ int glslview_init(int argc, const char** argv){
 
 			/*	compile shader.	*/
 			privatefprintf("----------- compiling source code ----------\n");
-			if(glslview_create_shader(&shader[x], vertex, fragData, NULL, NULL, NULL) == 0){
+			if(glslview_create_shader(&shaders[x].shader, vertex, fragData, NULL, NULL, NULL) == 0){
 				fprintf(stderr, "Invalid shader.\n");
 				status = EXIT_FAILURE;
 				return status;
 			}else{
-				glslview_update_shader_uniform(&uniform[x], &shader[x], displaymode.w, displaymode.h);
+				glslview_update_shader_uniform(&shaders[x].uniform, &shaders[x].shader, displaymode.w, displaymode.h);
 			}
 
 			if( srclen < 0 ){
