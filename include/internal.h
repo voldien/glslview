@@ -106,7 +106,7 @@ typedef struct glslview_shader_t{
 
 
 typedef void (*pswapbufferfunctype)(SDL_Window* window);	/*	Function pointer data type.	*/
-typedef void (*presize_screen)(SDL_Event* event, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
+typedef void (*presize_screen)(int* event, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
 typedef void (*pset_viewport)(unsigned int width, unsigned int height);

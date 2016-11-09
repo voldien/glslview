@@ -31,6 +31,7 @@
 #include<errno.h>
 #include<unistd.h>
 #include<signal.h>
+#include <libgen.h>
 
 #include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
 
@@ -325,7 +326,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			}break;
 			case 's':	/*	Enable OpenGL V Sync.	*/
 				privatefprintf("Enable V-Sync.\n");
-				SDL_GL_SetSwapInterval(16);
+				SDL_GL_SetSwapInterval(1);
 				break;
 			case 'n':{
 				char buf[4096];
@@ -642,10 +643,11 @@ int main(int argc, const char** argv){
 					if(ionevent.mask & IN_MODIFY){
 
 						for(x = 0; x < numFragPaths; x++){
+							char* ptmp;
 							memcpy(tmppath, fragPath[x], strlen(fragPath[x]) + 1);
-							basename(tmppath);
+							ptmp = basename(tmppath);
 							printf(tmppath);
-							if(strcmp(ionevent.name, tmppath ) == 0){
+							if(strcmp(ionevent.name, ptmp ) == 0){
 								privatefprintf("Updating %s\n", fragPath[x]);
 
 								glDeleteProgram(shader[x].program);
