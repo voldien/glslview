@@ -9,7 +9,7 @@ VkCommandBuffer commandbuffer;
 
 
 
-int glslview_init_vulkan(ExWin window){
+int glslview_init_vulkan(SDL_Window* window){
 	VkResult result;
 	unsigned int num_devices;
 	uint32_t queue_families_count = 0;
@@ -70,12 +70,12 @@ int glslview_init_vulkan(ExWin window){
 
 }
 
-void glslview_resize_screen_vk(ExEvent* event, struct uniform_location_t* uniform, ExShader* shader, ExTexture* ftexture){
+void glslview_resize_screen_vk(int* res, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture){
 	VkViewport viewport;
 	viewport.x = 0;
 	viewport.y = 0;
-	viewport.width = event->size.width;
-	viewport.height = event->size.height;
+	//viewport.width = event->size.width;
+	//viewport.height = event->size.height;
 	viewport.minDepth = 1.0;
 	viewport.maxDepth = 0.0;
 
@@ -84,12 +84,12 @@ void glslview_resize_screen_vk(ExEvent* event, struct uniform_location_t* unifor
 }
 
 
-void glslview_update_shader_uniform_vk(struct uniform_location_t* uniform, ExShader* shader, int width, int height){
+void glslview_update_shader_uniform_vk(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height){
 
 
 }
 
-void glslview_displaygraphic_vk(ExWin drawable){
+void glslview_displaygraphic_vk(SDL_Window* drawable){
 
 	/**/
 	glslview_swapbuffer(drawable);
@@ -99,7 +99,7 @@ void glslview_displaygraphic_vk(ExWin drawable){
 
 
 
-void glslview_update_uniforms_vk(UniformLocation* uniform, ExShader* shader, float ttime, long int deltatime){
+void glslview_update_uniforms_vk(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime){
 
 
 

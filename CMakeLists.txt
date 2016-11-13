@@ -54,7 +54,7 @@ ENDIF()
 FILE(GLOB core ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c )
 ADD_EXECUTABLE(glslview ${core} )
 
-TARGET_LINK_LIBRARIES(glslview -lEngineEx ${OPENGL_LIBRARIES} -lfreeimage -lhpm -lassimp -lvulkan)
+TARGET_LINK_LIBRARIES(glslview -lSDL2 ${OPENGL_LIBRARIES} -lfreeimage -lhpm -lassimp -lvulkan)
 
 INSTALL(TARGETS glslview DESTINATION bin)
 IF( UNIX )
