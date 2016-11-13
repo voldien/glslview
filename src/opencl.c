@@ -1,8 +1,17 @@
 #include"internal.h"
+#include<SDL2/SDL.h>
+#include<SDL2/SDL_syswm.h>
+#include<math.h>
+#include<assert.h>
 #include<string.h>
 #include<GL/gl.h>
 #include<CL/cl.h>
 #include<CL/cl_gl.h>
+
+
+size_t global_work_offset[2] = {0,0};
+size_t globalsize[2] = {128, 128};
+size_t localsize[2] = { 8, 8 };
 
 const char* get_cl_error_str(unsigned int errorcode){
 	static const char* errorString[] = {
@@ -80,8 +89,9 @@ const char* get_cl_error_str(unsigned int errorcode){
 	return (index >= 0 && index < errorCount) ? errorString[index] : "Unspecified Error";
 }
 
+
 /**/
-cl_context glslview_createclcontext(ExOpenGLContext shared, unsigned int* numDevices, cl_device_id** device){
+cl_context glslview_createclcontext(void* shared, unsigned int* numDevices, cl_device_id** device){
 	cl_int err;
 	cl_context context;
 	cl_platform_id* platforms;
@@ -89,12 +99,17 @@ cl_context glslview_createclcontext(ExOpenGLContext shared, unsigned int* numDev
 	cl_device_id curgldevice;
 	int x = 0;
 	size_t i;
+	SDL_SysWMinfo info;
+	SDL_VERSION(&info.version);
+	SDL_GetWindowWMInfo(window, &info);
+
+	assert(shared);
 
 	/**/
 	cl_context_properties props[] = {
 			CL_CONTEXT_PLATFORM, (cl_context_properties)NULL,
 			CL_GL_CONTEXT_KHR,   (cl_context_properties)shared,
-			CL_GLX_DISPLAY_KHR,     (cl_context_properties)ExGetDisplay(),
+			CL_GLX_DISPLAY_KHR,     (cl_context_properties)info.info.x11.display,
 			0
 	};
 
@@ -238,7 +253,7 @@ cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id de
 }
 
 
-cl_context glslview_createCLContext(ExOpenGLContext shared, unsigned int* ncldevices, cl_device_id** devices){
+cl_context glslview_createCLContext(void* shared, unsigned int* ncldevices, cl_device_id** devices){
 	cl_command_queue queue;
 	cl_context context;
 	cl_platform_id platform;
@@ -308,7 +323,6 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 		/*	check for predefine variable names.	*/
 		if(strcmp(argname, "fragColor") == 0){
 			err = clSetKernelArg(kernel, kerneltexindex, sizeof(cl_mem), &clmemframetexture[0]);
-			uniform->resolution = x;
 			continue;
 		}
 		if(strcmp(argname, "resolution") == 0){
@@ -342,7 +356,7 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 			continue;
 		}
 		if(strcmp(argtypename, "image2d_t") == 0){
-			if(ExIsTexture( &textures[texind] )){
+			if(glIsTexture( textures[texind].texture ) == GL_TRUE){
 				texmem = clCreateFromGLTexture((cl_context)context,
 						CL_MEM_READ_ONLY,
 						textures[texind].target,
@@ -384,7 +398,7 @@ void glslview_acquirecltextures(cl_context context, cl_command_queue queue, cl_k
 	/*	TODO resolve the index.	*/
 	kerneltexindex = 3;
 	for(x = 0; x < numTextures; x++){
-		if(ExIsTexture( &textures[x] )){
+		if(glIsTexture( textures[x].texture ) == GL_TRUE){
 			texmem = clCreateFromGLTexture((cl_context)context,
 					CL_MEM_READ_ONLY,
 					textures[x].target,
@@ -429,8 +443,8 @@ void glslview_cl_resize(unsigned int width, unsigned int height){
 		for(i = 0; i < numclframebuffer; i++){
 
 			if(glIsTexture(clframetexture[i].texture) == GL_TRUE){
-				ExDeleteTexture(&clframetexture[i]);
-				ExCreateTexture(&clframetexture[i], GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0 , GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+				glDeleteTextures(1, &clframetexture[i].texture);
+				glslview_create_texture(&clframetexture[i], GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0 , GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 				/*
 				glBindTexture(clframetexture[i].target,clframetexture[i].texture);
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0 , GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -438,19 +452,26 @@ void glslview_cl_resize(unsigned int width, unsigned int height){
 				clframetexture[i].height = height;
 				*/
 			}else{
-				ExCreateTexture(&clframetexture[i], GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0 , GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+				glslview_create_texture(&clframetexture[i], GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0 , GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 			}
-			glBindTexture(clframetexture[i].target,clframetexture[i].texture);
+			glBindTexture(clframetexture[i].target, clframetexture[i].texture);
 			glClearTexImage(clframetexture[i].texture, 0, GL_RGBA, GL_UNSIGNED_BYTE, &clearColor);
 
-
+			/**/
 			if(clmemframetexture[i] != NULL){
 				err = clReleaseMemObject(clmemframetexture[i]);
 				clmemframetexture[i] = NULL;
+				if(err != CL_SUCCESS){
+					fprintf(stderr, "%s\n", get_cl_error_str(err));
+				}
 			}
+
+			/**/
 			clmemframetexture[i] = clCreateFromGLTexture(clcontext, CL_MEM_WRITE_ONLY,
-					GL_TEXTURE_2D, 0,
-					clframetexture[i].texture, &err);
+								GL_TEXTURE_2D, 0,clframetexture[i].texture, &err);
+			if(err != CL_SUCCESS){
+				fprintf(stderr, "%s\n", get_cl_error_str(err));
+			}
 		}
 	}
 
@@ -458,17 +479,33 @@ void glslview_cl_resize(unsigned int width, unsigned int height){
 
 	if(clkernel){
 		int res[2] = {width, height};
+
+		/*	set work group.	*/
+		globalsize[0] = fmax( 128 * (width / 512) , 128);
+		globalsize[1] = fmax( 128 * (height / 512) , 128);
+		localsize[0] = fmax( 8 * (width / 512) , 4);
+		localsize[1] = fmax( 8 * (height / 512) , 4);
+
+
+
+
+
+		/**/
 		for(i = 0; i < sizeof(cluniform.tex) / sizeof(cluniform.tex[0]); i++){
 			if(cluniform.tex[i] != -1){
 				clSetKernelArg(clkernel, cluniform.tex[i], sizeof(cl_mem), &cltextures[i]);
 			}
 		}
 
+		/**/
 		err = clSetKernelArg(clkernel, 0, sizeof(cl_mem), &clmemframetexture[0]);
 		err = clSetKernelArg(clkernel, 1, sizeof(cl_uint), &width);
 		err = clSetKernelArg(clkernel, 2, sizeof(cl_uint), &height);
+
 		/**/
-		err = clSetKernelArg(clkernel, cluniform.resolution, sizeof(cl_int2), &res[0]);
+		if(cluniform.resolution != -1){
+			err = clSetKernelArg(clkernel, cluniform.resolution, sizeof(cl_int2), &res[0]);
+		}
 
 	}
 
@@ -480,9 +517,7 @@ void glslview_cl_createframebuffer(unsigned int width, unsigned int height){
 void glslview_renderclframe(cl_command_queue queue, cl_kernel kernel){
 	cl_int err = 0;
 
-	size_t global_work_offset[2] = {0,0};
-	size_t globalsize[2] = {128, 128};
-	size_t localsize[2] = { 8, 8 };
+
 
 	err |= clEnqueueAcquireGLObjects(queue, 1, &clmemframetexture[clcurrent], 0,0, NULL);
 	err |= clEnqueueNDRangeKernel(queue, kernel, 2, &global_work_offset[0], &globalsize[0], &localsize[0], 0, NULL, NULL);
@@ -491,6 +526,7 @@ void glslview_renderclframe(cl_command_queue queue, cl_kernel kernel){
 
 	/*	Prevent the system from crashing.	*/
 	if(err != CL_SUCCESS){
+		fprintf(stderr, "%s\n", get_cl_error_str(err));
 		glslview_clrelease();
 		exit(EXIT_FAILURE);
 	}
