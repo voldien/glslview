@@ -144,7 +144,7 @@ void glslview_resize_screen_gl(int* res, UniformLocation* uniform, glslviewShade
 
 	float resolution[2] = {res[0], res[1]};
 	glUniform2fv(uniform->resolution, 1, &resolution[0]);
-	privatefprintf("%dx%d.\n", res[0], res[1]);
+	glslview_verbose_printf("%dx%d.\n", res[0], res[1]);
 	/**/
 
 
@@ -160,7 +160,7 @@ void glslview_resize_screen_gl(int* res, UniformLocation* uniform, glslviewShade
 void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height){
 	float res[2];
 
-	privatefprintf("----------- fetching uniforms index location ----------\n");
+	glslview_verbose_printf("----------- fetching uniforms index location ----------\n");
 	uniform->time = glGetUniformLocation(shader->program, "time");
 	uniform->deltatime = glGetUniformLocation(shader->program, "deltatime");
 	uniform->resolution = glGetUniformLocation(shader->program, "resolution");
@@ -185,29 +185,29 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 	uniform->tex15 = glGetUniformLocation(shader->program, "tex15");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
 
-	debugprintf("time %d\n", uniform->time);
-	debugprintf("deltatime %d\n", uniform->deltatime);
-	debugprintf("resolution %d\n", uniform->resolution);
-	debugprintf("mouse %d\n", uniform->mouse);
-	debugprintf("offset %d\n", uniform->offset);
-	debugprintf("stdin %d\n", uniform->stdin);
-	debugprintf("tex0 %d\n", uniform->tex0);
-	debugprintf("tex1 %d\n", uniform->tex1);
-	debugprintf("tex2 %d\n", uniform->tex2);
-	debugprintf("tex3 %d\n", uniform->tex3);
-	debugprintf("tex4 %d\n", uniform->tex4);
-	debugprintf("tex5 %d\n", uniform->tex5);
-	debugprintf("tex6 %d\n", uniform->tex6);
-	debugprintf("tex7 %d\n", uniform->tex7);
-	debugprintf("tex8 %d\n", uniform->tex8);
-	debugprintf("tex9 %d\n", uniform->tex9);
-	debugprintf("tex10 %d\n", uniform->tex10);
-	debugprintf("tex11 %d\n", uniform->tex11);
-	debugprintf("tex12 %d\n", uniform->tex12);
-	debugprintf("tex13 %d\n", uniform->tex13);
-	debugprintf("tex14 %d\n", uniform->tex14);
-	debugprintf("tex15 %d\n", uniform->tex15);
-	debugprintf("backbuffer %d\n", uniform->backbuffer);
+	glslview_debug_printf("time %d\n", uniform->time);
+	glslview_debug_printf("deltatime %d\n", uniform->deltatime);
+	glslview_debug_printf("resolution %d\n", uniform->resolution);
+	glslview_debug_printf("mouse %d\n", uniform->mouse);
+	glslview_debug_printf("offset %d\n", uniform->offset);
+	glslview_debug_printf("stdin %d\n", uniform->stdin);
+	glslview_debug_printf("tex0 %d\n", uniform->tex0);
+	glslview_debug_printf("tex1 %d\n", uniform->tex1);
+	glslview_debug_printf("tex2 %d\n", uniform->tex2);
+	glslview_debug_printf("tex3 %d\n", uniform->tex3);
+	glslview_debug_printf("tex4 %d\n", uniform->tex4);
+	glslview_debug_printf("tex5 %d\n", uniform->tex5);
+	glslview_debug_printf("tex6 %d\n", uniform->tex6);
+	glslview_debug_printf("tex7 %d\n", uniform->tex7);
+	glslview_debug_printf("tex8 %d\n", uniform->tex8);
+	glslview_debug_printf("tex9 %d\n", uniform->tex9);
+	glslview_debug_printf("tex10 %d\n", uniform->tex10);
+	glslview_debug_printf("tex11 %d\n", uniform->tex11);
+	glslview_debug_printf("tex12 %d\n", uniform->tex12);
+	glslview_debug_printf("tex13 %d\n", uniform->tex13);
+	glslview_debug_printf("tex14 %d\n", uniform->tex14);
+	glslview_debug_printf("tex15 %d\n", uniform->tex15);
+	glslview_debug_printf("backbuffer %d\n", uniform->backbuffer);
 
 	glUseProgram(shader->program);
 
@@ -216,7 +216,7 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 	glUniform2fv(uniform->resolution, 1, &res[0]);
 
 	/**/
-	privatefprintf("----------- Assigning texture sampler index ----------\n");
+	glslview_verbose_printf("----------- Assigning texture sampler index ----------\n");
 	glUniform1i(uniform->tex0, 0);
 	glUniform1i(uniform->tex1, 1);
 	glUniform1i(uniform->tex2, 2);
@@ -242,7 +242,7 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 			glDeleteTextures(1, &fbackbuffertex.texture);
 		}
 		glslview_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, ftexinternalformat, width, height, 0, ftexformat, ftextype, NULL);
-		privatefprintf("Created backbuffer.	\n");
+		glslview_verbose_printf("Created backbuffer.	\n");
 	}else{
 		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
 			glDeleteTextures(1, &fbackbuffertex.texture);

@@ -207,9 +207,17 @@ void glslview_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shad
 
 
 
+/**
+ *	Print verbose.
+ *	The function will print depending on if the
+ *	verbose variable is true or not.
+ */
+extern int glslview_verbose_printf(const char* format,...);
 
-extern int privatefprintf(const char* format,...);
-extern int debugprintf(const char* format,...);
+/**
+ *	Print debug.
+ */
+extern int glslview_debug_printf(const char* format,...);
 
 
 

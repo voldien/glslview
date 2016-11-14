@@ -123,31 +123,29 @@ pswapbufferfunctype glslview_swapbuffer	= NULL;					/*	Function pointer for swap
 
 
 
-
-/**/
 int glslview_readargument(int argc, const char** argv, int pass){
 	static const struct option longoption[] = {
-			{"version", 		no_argument, NULL, 'v'},				/*	application version.	*/
-			{"alpha", 			no_argument, NULL, 'a'},				/*	use alpha channel.	*/
-			{"fullscreen", 		no_argument, NULL, 'F'},				/*	use in fullscreen.	*/
-			{"notify-file", 	no_argument, NULL, 'n'},				/*	enable inotify notification.	*/
-			{"srgb",			no_argument, NULL, 'S'},				/*	sRGB.	*/
-			{"Verbose", 		no_argument, NULL, 'V'},				/*	Verbose.	*/
-			{"wallpaper", 		optional_argument, NULL, 'w'},			/*	use as wallpaper.	*/
-			{"vsync", 			optional_argument, NULL, 's'},			/*	enable vsync.	*/
-			{"stdin",			optional_argument, NULL, 'I'},			/*	stdin data as buffer.	*/
-			{"no-decoration", 	optional_argument, NULL, 'D'},			/*	*/
-			{"debug", 			optional_argument, NULL, 'd'},			/*	Set application in debug mode.	*/
-			{"antialiasing", 	optional_argument, NULL, 'A'},			/*	anti aliasing.	*/
-			{"compression",		optional_argument, NULL, 'C'},			/*	Texture compression.	*/
-			{"file", 			required_argument, NULL, 'f'},			/*	glsl shader file.	*/
-			{"geometyshader",	required_argument, NULL, 'f'},			/*	geometry glsl shader file.	*/
-			{"opengl", 			required_argument, NULL, 'g'},			/*	Opengl version.	*/
-			{"renderer", 		required_argument, NULL, 'r'},			/*	Renderer API.	*/
-			{"resolution-scale",required_argument, NULL, 'R'},			/*	Texture scale resolution (required gl_framebuffer_object).*/
-			{"texture",			required_argument, NULL, 't'},			/*	Texture.	*/
-			{"poly",			required_argument, NULL, 'p'},			/*	Polygon.	*/
-			{"opencl",			required_argument, NULL, 'c'},			/*	Opencl.	*/
+			{"version", 		no_argument, 		NULL, 'v'},				/*	application version.	*/
+			{"alpha", 			no_argument, 		NULL, 'a'},				/*	use alpha channel.	*/
+			{"fullscreen", 		no_argument, 		NULL, 'F'},				/*	use in fullscreen.	*/
+			{"notify-file", 	no_argument, 		NULL, 'n'},				/*	enable inotify notification.	*/
+			{"srgb",			no_argument, 		NULL, 'S'},				/*	sRGB.	*/
+			{"Verbose", 		no_argument, 		NULL, 'V'},				/*	Verbose.	*/
+			{"wallpaper", 		optional_argument, 	NULL, 'w'},				/*	use as wallpaper.	*/
+			{"vsync", 			optional_argument, 	NULL, 's'},				/*	enable vsync.	*/
+			{"stdin",			optional_argument, 	NULL, 'I'},				/*	stdin data as buffer.	*/
+			{"no-decoration", 	optional_argument, 	NULL, 'D'},				/*	*/
+			{"debug", 			optional_argument, 	NULL, 'd'},				/*	Set application in debug mode.	*/
+			{"antialiasing", 	optional_argument, 	NULL, 'A'},				/*	anti aliasing.	*/
+			{"compression",		optional_argument, 	NULL, 'C'},				/*	Texture compression.	*/
+			{"file", 			required_argument, 	NULL, 'f'},				/*	glsl shader file.	*/
+			{"geometyshader",	required_argument, 	NULL, 'f'},				/*	geometry glsl shader file.	*/
+			{"opengl", 			required_argument, 	NULL, 'g'},				/*	Opengl version.	*/
+			{"renderer", 		required_argument, 	NULL, 'r'},				/*	Renderer API.	*/
+			{"resolution-scale",required_argument, 	NULL, 'R'},				/*	Texture scale resolution (required gl_framebuffer_object).*/
+			{"texture",			required_argument, 	NULL, 't'},				/*	Texture.	*/
+			{"poly",			required_argument, 	NULL, 'p'},				/*	Polygon.	*/
+			{"opencl",			required_argument, 	NULL, 'c'},				/*	Opencl.	*/
 
 			{NULL, 0, NULL, 0}
 	};
@@ -160,29 +158,29 @@ int glslview_readargument(int argc, const char** argv, int pass){
 
 	/*	*/
 	if(pass == 0){
-		privatefprintf("--------- First argument pass -------\n\n");
+		glslview_verbose_printf("--------- First argument pass -------\n\n");
 		while((c = getopt_long(argc, (char *const *)argv, shortopts, longoption, &index)) != EOF){
 			switch(c){
 			case 'v':{
 				printf("Version %s.\n", glslview_getVersion());
-				return (2);
+				exit(EXIT_SUCCESS);
 			}
 			case 'V':
 				verbose = SDL_TRUE;
-				privatefprintf("Enable verbose.\n");
+				glslview_verbose_printf("Enable verbose.\n");
 				break;
 			case 'h':{
 				return (2);
 			}
 			case 'd':{	/*	enable debug.	*/
-			    debug = 1;
+			    debug = SDL_TRUE;
 			}break;
 			case 'a':
-				privatefprintf("Enable alpha buffer.\n");
+				glslview_verbose_printf("Enable alpha buffer.\n");
 				SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 				break;
 			case 'S':
-				privatefprintf("Set framebuffer to sRGB color space.\n");
+				glslview_verbose_printf("Set framebuffer to sRGB color space.\n");
 				SDL_GL_SetAttribute(SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, SDL_TRUE);
 				glEnable(GL_FRAMEBUFFER_SRGB);
 				break;
@@ -195,22 +193,22 @@ int glslview_readargument(int argc, const char** argv, int pass){
 					SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 2);
 				}
 				glEnable(GL_MULTISAMPLE);
-				privatefprintf("Set multisample framebuffer : %d samples.\n", optarg ? atoi(optarg) : 2);
+				glslview_verbose_printf("Set multisample framebuffer : %d samples.\n", optarg ? atoi(optarg) : 2);
 
 				break;
 			case 'r':
 				if(optarg != NULL){
 					if(strcmp(optarg, "opengl") == 0){
 						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-						privatefprintf("Set rendering API to OpenGL.\n");
+						glslview_verbose_printf("Set rendering API to OpenGL.\n");
 					}
 					if(strcmp(optarg, "openglcore") == 0){
 						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-						privatefprintf("Set rendering API to OpenGL core.\n");
+						glslview_verbose_printf("Set rendering API to OpenGL core.\n");
 					}
 					else if(strcmp(optarg, "opengles") == 0){
 						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-						privatefprintf("Set rendering API to OpenGL-ES.\n");
+						glslview_verbose_printf("Set rendering API to OpenGL-ES.\n");
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
 						glslview_resize_screen = glslview_resize_screen_vk;
@@ -218,12 +216,12 @@ int glslview_readargument(int argc, const char** argv, int pass){
 						glslview_update_shader_uniform = glslview_update_shader_uniform_vk;
 						glslview_update_uniforms = glslview_update_uniforms_vk;
 						glslview_swapbuffer = SDL_GL_SwapWindow;
-						privatefprintf("Set rendering API to Vulkan.\n");
+						glslview_verbose_printf("Set rendering API to Vulkan.\n");
 					}
 				}
 				break;
 			case 'C':
-				privatefprintf("Enable texture compression.\n");
+				glslview_verbose_printf("Enable texture compression.\n");
 				compression = 1;
 				break;
 			case 'g':
@@ -235,7 +233,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 					/*	Set opengl version requested by input argument.	*/
 					SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, strtol(optarg, NULL, 10) / 100);
 					SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, (strtol(optarg, NULL, 10) % 100 ) / 10);
-					privatefprintf("Set OpenGL version %d.%d0", strtol(optarg, NULL, 10) / 100, (strtol(optarg, NULL, 10) % 100) / 10);
+					glslview_verbose_printf("Set OpenGL version %d.%d0", strtol(optarg, NULL, 10) / 100, (strtol(optarg, NULL, 10) % 100) / 10);
 				}
 				break;
 			case 'I':	/*	use pipe stdin as buffer.	*/
@@ -243,13 +241,13 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				if(optarg){
 					stdin_buffer_size = strtol(optarg, NULL, 10);
 				}
-				privatefprintf("Stdin used as input buffer for glsl shader with read size %d.\n", stdin_buffer_size);
+				glslview_verbose_printf("Stdin used as input buffer for glsl shader with read size %d.\n", stdin_buffer_size);
 				break;
 			case 'f':
 				if(optarg){
 					fragPath[numFragPaths] = optarg;
 					numFragPaths++;
-					privatefprintf("shader file %s\n", optarg);
+					glslview_verbose_printf("shader file %s\n", optarg);
 				}
 				break;
 			case 'c':	/*	TODO create opencl context.	*/
@@ -265,11 +263,11 @@ int glslview_readargument(int argc, const char** argv, int pass){
 		if(c == -1 && optind < argc && fragPath == NULL){
 			fragPath[numFragPaths] = (char*)argv[optind];
 			numFragPaths++;
-			privatefprintf("shader file %s\n", argv[optind]);
+			glslview_verbose_printf("shader file %s\n", argv[optind]);
 		}
 
 	}else if(pass == 1){
-		privatefprintf("--------- Second argument pass -------\n\n");
+		glslview_verbose_printf("--------- Second argument pass -------\n\n");
 
 		while((c = getopt_long(argc, (char *const *)argv, shortopts, longoption, &index)) != EOF){
 			switch(c){
@@ -283,7 +281,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				break;
 			case 'F':	/*	Fullscreen.	*/
 				fullscreen = 1;
-				privatefprintf("Set fullscreen.\n");
+				glslview_verbose_printf("Set fullscreen.\n");
 				SDL_GetWindowDisplayIndex(window);
 				SDL_SetWindowFullscreen(window, 0);
 				break;
@@ -300,7 +298,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 					if(optarg){
 						if(strlen(optarg) > 0){
 							index = strtol(optarg, NULL, 10);
-							privatefprintf("Monitor screen index %d selected for wallpaper.\n", index);
+							glslview_verbose_printf("Monitor screen index %d selected for wallpaper.\n", index);
 							/*
 							ExGetScreenRect(index, &rect);
 							location.x = rect.x;
@@ -320,18 +318,18 @@ int glslview_readargument(int argc, const char** argv, int pass){
 					/*	ExSetWindowFlag(window, ExGetWindowFlag(window));	*/
 
 				}else{
-					privatefprintf("Couldn't find desktop window handle.\n");
+					glslview_verbose_printf("Couldn't find desktop window handle.\n");
 					exit(EXIT_FAILURE);
 				}
 			}break;
 			case 's':	/*	Enable OpenGL V Sync.	*/
-				privatefprintf("Enable V-Sync.\n");
+				glslview_verbose_printf("Enable V-Sync.\n");
 				SDL_GL_SetSwapInterval(1);
 				break;
 			case 'n':{
 				char buf[4096];
 				int x;
-				privatefprintf("Initialize inotify.\n");
+				glslview_verbose_printf("Initialize inotify.\n");
 
 				/*	initialize inotify.	*/
 				ifd = inotify_init1(IN_NONBLOCK);
@@ -350,7 +348,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 						fprintf(stderr, "Failed to add inotify %s %s.\n", buf, strerror(errno));
 						exit(EXIT_FAILURE);
 					}
-					privatefprintf("Added %s directory to inotify watch.\n\n", buf);
+					glslview_verbose_printf("Added %s directory to inotify watch.\n\n", buf);
 				}
 
 				inotifybuf = malloc(4096);
@@ -371,9 +369,9 @@ int glslview_readargument(int argc, const char** argv, int pass){
 
 					/*	*/
 					FreeImage_Initialise(0);
-					privatefprintf("FreeImage version : %s\n\n", FreeImage_GetVersion());
+					glslview_verbose_printf("FreeImage version : %s\n\n", FreeImage_GetVersion());
 
-					debugprintf("Attempt to load texture %s.\n", argv[optind + x -1]);
+					glslview_debug_printf("Attempt to load texture %s.\n", argv[optind + x -1]);
 
 
 					/*	TODO add support for regular expression for texture.	*/
@@ -387,7 +385,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 						bitmap = FreeImage_Load( format, argv[optind + x -1], 0 );
 
 						if(bitmap){
-							privatefprintf("Reading texture %s for uniform tex%d.\n", argv[optind + x -1], nextTex);
+							glslview_verbose_printf("Reading texture %s for uniform tex%d.\n", argv[optind + x -1], nextTex);
 
 							/*	Extracting texture attributes.	*/
 							colortype = FreeImage_GetColorType(bitmap);
@@ -428,12 +426,12 @@ int glslview_readargument(int argc, const char** argv, int pass){
 									height, 0, gformat, type, bitdata);
 
 							nextTex++;
-							privatefprintf("fileformat : %d \nwidth : %d\nheight : %d\nbpp : %d\n\n", format, width, height, bpp);
+							glslview_verbose_printf("fileformat : %d \nwidth : %d\nheight : %d\nbpp : %d\n\n", format, width, height, bpp);
 
 							FreeImage_Unload(bitmap);
 
 						}else{
-							privatefprintf("Failed to read texture %s.\n", optarg);
+							glslview_verbose_printf("Failed to read texture %s.\n", optarg);
 						}/**/
 						x++;
 					}
@@ -545,7 +543,7 @@ int main(int argc, const char** argv){
 	/*	Bind all textures.	*/
 	for(x = 0; x < numTextures; x++){
 		if(glIsTexture(textures[x].texture) == GL_TRUE){
-			privatefprintf("Binding texture %d.\n", x);
+			glslview_verbose_printf("Binding texture %d.\n", x);
 			glActiveTexture(GL_TEXTURE0 + x);
 			glBindTexture(textures[x].target, textures[x].texture);
 		}
@@ -621,7 +619,7 @@ int main(int argc, const char** argv){
 			ret = select(FD_SETSIZE, &readfd, NULL, NULL, &timeval);
 
 			if(ret < 0){
-				privatefprintf("Select failed: %s\n", strerror(errno));
+				glslview_verbose_printf("Select failed: %s\n", strerror(errno));
 			}
 			else if(ret == 0){
 				if(visable || renderInBackground){
@@ -636,7 +634,7 @@ int main(int argc, const char** argv){
 				/**/
 				while( (nbytes = read(ifd, &ionevent, EVENT_BUF_LEN)) > 0){
 					char tmppath[4096];
-					privatefprintf("inotify event fetching.\n");
+					glslview_verbose_printf("inotify event fetching.\n");
 					read(ifd, &buffer, ionevent.len);
 
 					printf("%s\n",ionevent.name);
@@ -648,7 +646,7 @@ int main(int argc, const char** argv){
 							ptmp = basename(tmppath);
 							printf(tmppath);
 							if(strcmp(ionevent.name, ptmp ) == 0){
-								privatefprintf("Updating %s\n", fragPath[x]);
+								glslview_verbose_printf("Updating %s\n", fragPath[x]);
 
 								glDeleteProgram(shaders[x].shader.program);
 								memset(&shaders[x].shader, 0, sizeof(glslviewShader));
@@ -670,7 +668,7 @@ int main(int argc, const char** argv){
 
 					}
 					if(ionevent.mask & IN_DELETE){
-						privatefprintf("File deleted.\n");
+						glslview_verbose_printf("File deleted.\n");
 					}
 				}
 
@@ -691,7 +689,7 @@ int main(int argc, const char** argv){
 
 	error:	/*	*/
 
-	privatefprintf("glslview is terminating.\n");
+	glslview_verbose_printf("glslview is terminating.\n");
 	glslview_terminate();
 
 

@@ -126,11 +126,11 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Display OpenGL information.	*/
-	privatefprintf("-------------- OpenGL Information ------------------\n");
-	privatefprintf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
-	privatefprintf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
-	privatefprintf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-	privatefprintf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
+	glslview_verbose_printf("-------------- OpenGL Information ------------------\n");
+	glslview_verbose_printf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
+	glslview_verbose_printf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
+	glslview_verbose_printf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	glslview_verbose_printf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
 
 	/*	*/
 	if(glslview_readargument(argc, argv, 1) == 2){
@@ -140,7 +140,7 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Load shader fragment source code.	*/
-	privatefprintf("----------- fetching source code ----------\n");
+	glslview_verbose_printf("----------- fetching source code ----------\n");
 	shaders = malloc(sizeof(glslviewShaderCollection) * numFragPaths);
 	memset(shaders, 0, sizeof(glslviewShaderCollection) * numFragPaths);
 	/**/
@@ -158,10 +158,10 @@ int glslview_init(int argc, const char** argv){
 	else{
 		for(x = 0; x < numFragPaths; x++){
 			srclen = glslview_loadfile((const char*)fragPath[x], (void**)&fragData);
-			debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
+			glslview_debug_printf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
 
 			/*	compile shader.	*/
-			privatefprintf("----------- compiling source code ----------\n");
+			glslview_verbose_printf("----------- compiling source code ----------\n");
 			if(glslview_create_shader(&shaders[x].shader, vertex, fragData, NULL, NULL, NULL) == 0){
 				fprintf(stderr, "Invalid shader.\n");
 				status = EXIT_FAILURE;
@@ -190,7 +190,7 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	generate vertex array for quad.	*/
-	privatefprintf("----------- constructing rendering quad. ----------\n");
+	glslview_verbose_printf("----------- constructing rendering quad. ----------\n");
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 	glGenBuffers(1, &vbo);
@@ -274,8 +274,7 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 }
 
 
-/**/
-int privatefprintf(const char* format,...){
+int glslview_verbose_printf(const char* format,...){
 	va_list larg;
 	int status;
 
@@ -290,7 +289,7 @@ int privatefprintf(const char* format,...){
 	return status;
 }
 
-int debugprintf(const char* format,...){
+int glslview_debug_printf(const char* format,...){
 	va_list larg;
 	int status;
 
