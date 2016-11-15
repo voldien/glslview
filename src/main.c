@@ -154,7 +154,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 	int c;
 	int index;
 	int status = 1;
-	const char* shortopts = "dIhsar:g:Vf:SA:t:vFnCp:w";
+	const char* shortopts = "dIsar:g:Vf:SA:t:vFnCp:w";
 
 	/*	*/
 	if(pass == 0){
@@ -169,9 +169,6 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				verbose = SDL_TRUE;
 				glslview_verbose_printf("Enable verbose.\n");
 				break;
-			case 'h':{
-				return (2);
-			}
 			case 'd':{	/*	enable debug.	*/
 			    debug = SDL_TRUE;
 			}break;
@@ -237,7 +234,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				}
 				break;
 			case 'I':	/*	use pipe stdin as buffer.	*/
-				use_stdin_as_buffer = 1;
+				use_stdin_as_buffer = SDL_TRUE;
 				if(optarg){
 					stdin_buffer_size = strtol(optarg, NULL, 10);
 				}
@@ -280,10 +277,14 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				}
 				break;
 			case 'F':	/*	Fullscreen.	*/
-				fullscreen = 1;
+				fullscreen = SDL_TRUE;
+				SDL_DisplayMode dismod;
 				glslview_verbose_printf("Set fullscreen.\n");
-				SDL_GetWindowDisplayIndex(window);
-				SDL_SetWindowFullscreen(window, 0);
+				SDL_GetCurrentDisplayMode(
+						SDL_GetWindowDisplayIndex(window),
+						&dismod);
+				SDL_SetWindowSize(window, dismod.w, dismod.h);
+				SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 				break;
 			case 'w':{	/*	Set as desktop wallpaper.	*/	/*	TODO fix for other distro other than Ubuntu.*/
 				SDL_Point size;
