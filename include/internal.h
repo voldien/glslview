@@ -46,6 +46,7 @@ typedef struct uniform_location_t{
 	int offset;			/*	offset.	*/
 	int backbuffer;		/*	previous buffer.	*/
 	int stdin;			/*	stdin data.	*/
+	int wheel;			/*				*/
 	int tex0;			/*	texture 0.	*/
 	int tex1;			/*	texture 1.	*/
 	int tex2;			/*	texture 2.	*/
@@ -127,8 +128,7 @@ extern pupdate_update_uniforms glslview_update_uniforms;
 extern pset_viewport glslview_set_viewport;
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
 
-/**/
-extern const float quad[4][3];
+
 
 
 
@@ -155,12 +155,21 @@ extern int glslview_init(int argc, const char** argv);
  */
 extern const char* glslview_getVersion(void);
 
-/**/
+/**
+ *
+ */
 extern void glslview_catchSig(int signal);
 
-/**/
+/**
+ *
+ *	@Return
+ */
 extern int glslview_readargument(int argc, const char** argv, int pass);
-/**/
+
+/**
+ *
+ *	@Return
+ */
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
 
@@ -223,17 +232,18 @@ extern int glslview_debug_printf(const char* format,...);
 
 
 
-/**/
-extern unsigned int vao;						/*	*/
-extern unsigned int vbo;						/*	*/
-extern const char* vertex;
-
-extern SDL_GLContext glc;
-extern SDL_Window* window;								/*	Window.	*/
-extern int fullscreen;						/*	Set window fullscreen.	*/
-extern int verbose;							/*	enable verbose.	*/
-extern int debug;								/*	enable debugging.	*/
-extern int compression;						/*	Use compression.	*/
+/*	*/
+extern const float quad[4][3];					/*	Display quad.	*/
+extern unsigned int vao;						/*	Display vertex array object.	*/
+extern unsigned int vbo;						/*	Display vertex buffer object.	*/
+extern const char* vertex;						/*	Display vertex shader.	*/
+/*	*/
+extern SDL_GLContext glc;							/*	OpenGL Context.	*/
+extern SDL_Window* window;							/*	Window.	*/
+extern int fullscreen;								/*	Set window fullscreen.	*/
+extern int verbose;									/*	enable verbose.	*/
+extern int debug;									/*	enable debugging.	*/
+extern int compression;								/*	Use compression.	*/
 extern unsigned int rendererapi;					/*	Rendering API.	*/
 extern unsigned int isAlive;						/*	*/
 extern int ifd;										/*	inotify file descriptor.*/
@@ -242,18 +252,17 @@ extern char* inotifybuf;							/*	*/
 extern unsigned int numFragPaths;					/*	*/
 extern unsigned int numShaderPass;
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
-//extern UniformLocation uniform[32];				/*	uniform.	*/
-//extern glslviewShader shader[32];						/*	*/
-extern glslviewShaderCollection* shaders;
+
+extern glslviewShaderCollection* shaders;			/*	*/
 extern unsigned int fbo;							/*	*/
 extern unsigned int ftextype;
 extern unsigned int ftexinternalformat;
 extern unsigned int ftexformat;
-extern glslviewTexture fbackbuffertex;					/*	framebuffer texture for backbuffer uniform variable.	*/
-extern glslviewTexture textures[8];						/*	*/
-extern const int numTextures;
+extern glslviewTexture fbackbuffertex;				/*	framebuffer texture for backbuffer uniform variable.	*/
+extern glslviewTexture textures[8];					/*	*/
+extern const int numTextures;						/*	*/
 extern unsigned int nextTex;						/*	*/
-extern unsigned int isPipe;
+extern unsigned int isPipe;							/*	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;						/*	*/
 

@@ -16,27 +16,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-#include<SDL2/SDL.h>
 
-#include"internal.h"
-
-#include<GL/gl.h>
-#include<GL/glext.h>
-#include<regex.h>
-
-#include<getopt.h>
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<errno.h>
-#include<unistd.h>
-#include<signal.h>
+#include <errno.h>
+#include <FreeImage.h>
+#include <getopt.h>
+#include <GL/gl.h>
+#include <GL/glext.h>
+#include <internal.h>
 #include <libgen.h>
-
-#include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
-
-
-#include<FreeImage.h>
+#include <regex.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
+#include <sys/select.h>
+#include <sys/time.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_rect.h>
+#include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_video.h>
+#include <unistd.h>
 
 
 /*	for version 2.0, 3D objects with hpm for high performance matrices operators.
@@ -51,7 +54,7 @@
 #define EVENT_SIZE  ( sizeof (struct inotify_event) )
 #define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
-/*	default vertex shader.	*/
+/*	Default vertex shader.	*/
 const char* vertex = ""
 "#version 330 core\n"
 "layout(location = 0) in vec3 vertex;\n"
@@ -60,7 +63,7 @@ const char* vertex = ""
 "}\n";
 
 
-/**/
+/*	Display quad.	*/
 const float quad[4][3] = {
 		{-1.0f, -1.0f, 0.0f},
 		{-1.0f, 1.0f, 0.0f},
@@ -78,12 +81,14 @@ const float quad[4][3] = {
 /*	quad buffer.	*/
 unsigned int vao = 0;						/*	*/
 unsigned int vbo = 0;						/*	*/
+
+/**/
 SDL_GLContext glc;
 SDL_Window* window = NULL;						/*	Window.	*/
 SDL_Window* drawable = NULL;					/*	Window.	*/
-int fullscreen = 0;						/*	Set window fullscreen.	*/
+int fullscreen = 0;							/*	Set window fullscreen.	*/
 int verbose = 0;							/*	enable verbose.	*/
-int debug = 0;							/*	enable debugging.	*/
+int debug = 0;								/*	enable debugging.	*/
 int compression = 0;						/*	Use compression.	*/
 unsigned int isAlive = 1;						/*	*/
 int ifd = -1;									/*	inotify file descriptor.*/
@@ -92,8 +97,7 @@ char* inotifybuf = NULL;						/*	*/
 unsigned int numFragPaths = 0;					/*	*/
 unsigned int numShaderPass = 0;
 char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
-//UniformLocation uniform[32] = {{0}};	/*	uniform.	*/
-//glslviewShader shader[32] = {{0}};						/*	*/
+/**/
 glslviewShaderCollection* shaders = NULL;
 unsigned int fbo = 0;							/*	*/
 unsigned int ftextype = GL_FLOAT;
@@ -219,7 +223,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				break;
 			case 'C':
 				glslview_verbose_printf("Enable texture compression.\n");
-				compression = 1;
+				compression = SDL_TRUE;
 				break;
 			case 'g':
 				if(optarg){
@@ -279,7 +283,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			case 'F':	/*	Fullscreen.	*/
 				fullscreen = SDL_TRUE;
 				SDL_DisplayMode dismod;
-				glslview_verbose_printf("Set fullscreen.\n");
+				glslview_verbose_printf("Enable fullscreen mode.\n");
 				SDL_GetCurrentDisplayMode(
 						SDL_GetWindowDisplayIndex(window),
 						&dismod);
@@ -373,7 +377,6 @@ int glslview_readargument(int argc, const char** argv, int pass){
 					glslview_verbose_printf("FreeImage version : %s\n\n", FreeImage_GetVersion());
 
 					glslview_debug_printf("Attempt to load texture %s.\n", argv[optind + x -1]);
-
 
 					/*	TODO add support for regular expression for texture.	*/
 					regcomp(&reg, "*", 0);
@@ -558,9 +561,10 @@ int main(int argc, const char** argv){
 
 			/**/
 			if(event.type == SDL_KEYDOWN){
-				if(event.key.keysym.sym == SDLK_KP_ENTER && (event.key.keysym.mod & ( KMOD_LCTRL | KMOD_RCTRL) )){
-					fullscreen = ~fullscreen & 0x1;
-					SDL_SetWindowFullscreen( fullscreen ? window : NULL, 0);
+				printf("%d\n", event.key.keysym.sym);
+				if(event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_CTRL )){
+					fullscreen = ~fullscreen & SDL_TRUE;
+					SDL_SetWindowFullscreen( window, fullscreen == SDL_TRUE ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 				}
 			}
 
@@ -571,6 +575,10 @@ int main(int argc, const char** argv){
 				for(x = 0; x < numShaderPass; x++){
 					glUniform2fv(shaders[x].uniform.mouse, 1, &mouse[0]);
 				}
+			}
+
+			if(event.type == SDL_MOUSEWHEEL){
+
 			}
 
 			if(event.type == SDL_WINDOWEVENT){
@@ -731,6 +739,7 @@ int main(int argc, const char** argv){
 		free(inotifybuf);
 		close(ifd);
 	}
+
 	SDL_Quit();
 	return status;
 }
