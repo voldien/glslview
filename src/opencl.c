@@ -90,7 +90,6 @@ const char* get_cl_error_str(unsigned int errorcode){
 }
 
 
-/**/
 cl_context glslview_createclcontext(void* shared, unsigned int* numDevices, cl_device_id** device){
 	cl_int err;
 	cl_context context;
@@ -164,8 +163,9 @@ cl_context glslview_createclcontext(void* shared, unsigned int* numDevices, cl_d
 	/*	create context.	*/
 	props[1] = (cl_context_properties)platforms[nselectPlatform];
 	context = clCreateContext(props, nDevices, devices, NULL, NULL, &err);
-	if(context == NULL){
+	if(context == NULL || err != CL_SUCCESS){
 		fprintf(stderr, "Failed to create OpenCL context. %d\n  [ %s ]", err, get_cl_error_str(err));
+		exit(EXIT_FAILURE);
 	}
 
 	if(device){
@@ -237,51 +237,49 @@ cl_program glslview_createProgram(cl_context context, unsigned int nDevices, cl_
 }
 
 cl_command_queue glslview_createcommandqueue(cl_context context, cl_device_id device){
-	cl_int error;
+
+	cl_int err;
 	cl_command_queue queue;
 	cl_command_queue_properties pro = 0;
+
 	queue = clCreateCommandQueue(context,
 			device,
 			pro,
-			&error);
-	/**/
-	if(error != CL_SUCCESS){
-		fprintf(stderr, "Failed to create command queue . %d \n", error);
-	}
+			&err);
 
+	/*	Check error.	*/
+	if(err != CL_SUCCESS){
+		fprintf(stderr, "Failed to create command queue . %d \n", err);
+		exit(EXIT_FAILURE);
+	}
 	return queue;
 }
 
 
 cl_context glslview_createCLContext(void* shared, unsigned int* ncldevices, cl_device_id** devices){
+
 	cl_command_queue queue;
 	cl_context context;
-	cl_platform_id platform;
-	cl_int err;
-	int i;
 
 	assert(shared);
 
+	/*	Create opencl context.	*/
 	context = glslview_createclcontext(shared, ncldevices, devices);
-	if(context == NULL){
-		return NULL;
-	}
 
-
+	/*	Create opencl command queue.	*/
 	queue = glslview_createcommandqueue(context, (*devices)[0]);
 	clqueue = queue;
-
 
 	return context;
 }
 
 cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices, cl_device_id* id, const char* cfilename, UniformLocation* uniform){
+
 	cl_program program;
 	cl_kernel kernel;
 	cl_mem texmem;
 	cl_int err;
 	int x;
-	int y;
 	unsigned int texind = 0;
 	int kerneltexindex;
 	cl_uint numKernelArgs;
@@ -289,16 +287,19 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 	size_t argnamesize;
 	size_t argtype;
 	char argtypename[256];
+
 	/*	framebuffer image view attributes information.	*/
 	const unsigned int w = 1920 / 2;
 	const unsigned int h = 1080 / 2;
 
-
+	/*	Create opencl program.	*/
 	program = glslview_createProgram(context, nNumDevices, id, cfilename);
 	assert(program);
 	kernel = clCreateKernel(program, "main", &err);
 	clkernel = kernel;
-	if(err != CL_SUCCESS){
+
+	/*	Check error.	*/
+	if(err != CL_SUCCESS || kernel == NULL){
 		fprintf(stderr, "Failed to create kernel %d %s\n", err, get_cl_error_str(err));
 		return NULL;
 	}
@@ -306,8 +307,8 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 
 
 
-	memset(uniform, -1, sizeof(UniformLocation));
 	/*	iterate through all the argument.	*/
+	memset(uniform, -1, sizeof(UniformLocation));
 	kerneltexindex = 0;
 	err = 0;
 	err = clGetKernelInfo(kernel, CL_KERNEL_NUM_ARGS, sizeof(numKernelArgs), &numKernelArgs, NULL);
@@ -369,15 +370,17 @@ cl_program glslview_createCLProgram(cl_context context, unsigned int nNumDevices
 				}
 
 				cltextures[texind] = texmem;
-				texind = ++numcltextures;
-				clSetKernelArg(kernel, x, sizeof(cl_mem), &texmem);
+
+				err = clSetKernelArg(kernel, x, sizeof(cl_mem), &texmem);
 				cluniform.tex[texind] = x;
 
 				/*	Acquire */
-				err = clEnqueueAcquireGLObjects(clqueue, texind, &cltextures[x], 0, NULL, NULL);
+				err = clEnqueueAcquireGLObjects(clqueue, texind, &cltextures[texind], 0, NULL, NULL);
 				if(err != CL_SUCCESS){
 					fprintf(stderr, get_cl_error_str(err));
+					exit(EXIT_FAILURE);
 				}
+				texind = ++numcltextures;
 			}
 
 		}/**/
@@ -457,20 +460,26 @@ void glslview_cl_resize(unsigned int width, unsigned int height){
 			glBindTexture(clframetexture[i].target, clframetexture[i].texture);
 			glClearTexImage(clframetexture[i].texture, 0, GL_RGBA, GL_UNSIGNED_BYTE, &clearColor);
 
-			/**/
+			/*	*/
 			if(clmemframetexture[i] != NULL){
 				err = clReleaseMemObject(clmemframetexture[i]);
 				clmemframetexture[i] = NULL;
+
 				if(err != CL_SUCCESS){
 					fprintf(stderr, "%s\n", get_cl_error_str(err));
+					exit(EXIT_FAILURE);
 				}
+
 			}
 
 			/**/
 			clmemframetexture[i] = clCreateFromGLTexture(clcontext, CL_MEM_WRITE_ONLY,
 								GL_TEXTURE_2D, 0,clframetexture[i].texture, &err);
-			if(err != CL_SUCCESS){
+
+			/*	Check error.	*/
+			if(err != CL_SUCCESS || clmemframetexture[i] == NULL){
 				fprintf(stderr, "%s\n", get_cl_error_str(err));
+				exit(EXIT_FAILURE);
 			}
 		}
 	}
@@ -516,8 +525,6 @@ void glslview_cl_createframebuffer(unsigned int width, unsigned int height){
 
 void glslview_renderclframe(cl_command_queue queue, cl_kernel kernel){
 	cl_int err = 0;
-
-
 
 	err |= clEnqueueAcquireGLObjects(queue, 1, &clmemframetexture[clcurrent], 0,0, NULL);
 	err |= clEnqueueNDRangeKernel(queue, kernel, 2, &global_work_offset[0], &globalsize[0], &localsize[0], 0, NULL, NULL);
