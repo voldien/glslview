@@ -53,12 +53,16 @@
 
 
 void glslview_default_init(void){
+	glslview_init_renderingapi = glslview_init_opengl;
 	glslview_resize_screen = glslview_resize_screen_gl;
 	glslview_displaygraphic = glslview_displaygraphic_gl;
 	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
 	glslview_update_uniforms = glslview_update_uniforms_gl;
 	glslview_set_viewport = glslview_set_viewport_gl;
 	glslview_swapbuffer = SDL_GL_SwapWindow;
+	glslview_create_texture = glslview_create_texture_gl;
+	glslview_create_shader = glslview_create_shader_gl;
+	glslview_rendergraphic = glslview_rendergraphic_gl;
 }
 
 
@@ -68,8 +72,8 @@ int glslview_init(int argc, const char** argv){
 	long int srclen;							/*	*/
 
 	SDL_DisplayMode displaymode;
+	SDL_version sdlver;
 	char title[512];							/*	*/
-	int glatt;
 	char* fragData = NULL;						/*	*/
 	int x;										/*	*/
 
@@ -86,11 +90,12 @@ int glslview_init(int argc, const char** argv){
 
 	/**/
 	printf("\n");
-	printf("glslview v%d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
+	printf("glslview v%s\n", glslview_getVersion());
+	/*	Initialize SDL.	*/
+	SDL_GetVersion(&sdlver);
+	glslview_verbose_printf("SDL version %d.%d.%d\n", sdlver.major, sdlver.minor, sdlver.patch);
 	printf("==================\n\n");
 
-	/*	Initialize SDL.	*/
-	//privatefprintf("ELT version %s\n", ExGetVersion());
 	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0){
 		status = EXIT_FAILURE;
 		return status;
@@ -106,19 +111,14 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Create window. */
-	SDL_GetCurrentDisplayMode(0, &displaymode);
-	displaymode.w /= 2;
-	displaymode.h /= 2;
-	sprintf(title, "glslview %s", glslview_getVersion());
-	window = SDL_CreateWindow(title, displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	window = glslview_init_renderingapi();
 	if(!window){
 		status = EXIT_FAILURE;
 		return status;
 	}
-	glc = SDL_GL_CreateContext(window);
-	SDL_GL_MakeCurrent(window, glc);
 
 	/*	*/
+	sprintf(title, "glslview %s", glslview_getVersion());
 	SDL_ShowWindow(window);
 	SDL_SetWindowTitle(window, title);
 	SDL_SetWindowPosition(window, displaymode.w / 2, displaymode.h / 2);
@@ -204,12 +204,7 @@ int glslview_init(int argc, const char** argv){
 	/*	*/
 	glBindVertexArray(0);
 
-	/*	*/
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_BLEND);
-	glDepthMask(GL_FALSE);
-	glDisable(GL_STENCIL_TEST);
+
 
 	glViewport(0, 0, displaymode.w, displaymode.h);
 
@@ -218,18 +213,7 @@ int glslview_init(int argc, const char** argv){
 
 
 
-	/*	*/
-	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
-	if(glatt > 0){
-		glClearColor(0.0, 0.0, 0.0, 1.0);
-		glEnable(GL_ALPHA_TEST);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	}
-	else{
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-		glDisable(GL_ALPHA_TEST);
-	}
+
 
 	return status;
 }

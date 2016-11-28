@@ -22,9 +22,52 @@
 #include<unistd.h>
 #include<GL/gl.h>
 #include<GL/glext.h>
+#include<SDL2/SDL.h>
+
+SDL_Window* glslview_init_opengl(void){
+	SDL_Window* win;
+	SDL_DisplayMode displaymode;
+	int glatt;
+
+	SDL_GetCurrentDisplayMode(0, &displaymode);
+	displaymode.w /= 2;
+	displaymode.h /= 2;
+	win = SDL_CreateWindow("", displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+
+	if(win == NULL){
+		return NULL;
+	}
+
+	glc = SDL_GL_CreateContext(win);
+	SDL_GL_MakeCurrent(win, glc);
 
 
-glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
+	/*	*/
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glDepthMask(GL_FALSE);
+	glDisable(GL_STENCIL_TEST);
+
+	/*	*/
+	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
+	if(glatt > 0){
+		glClearColor(0.0, 0.0, 0.0, 1.0);
+		glEnable(GL_ALPHA_TEST);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	}
+	else{
+		glClearColor(0.0, 0.0, 0.0, 0.0);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+		glDisable(GL_ALPHA_TEST);
+	}
+
+	return win;
+}
+
+
+
+glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
 
 	if(!texture){
 		return NULL;
@@ -46,6 +89,8 @@ glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int 
 	case GL_TEXTURE_2D:
 		glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
 		break;
+	default:
+		break;
 	}
 
 
@@ -54,6 +99,9 @@ glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int 
 	glTexParameteri(target, GL_TEXTURE_WRAP_S,GL_REPEAT);
 	glTexParameteri(target, GL_TEXTURE_WRAP_T,GL_REPEAT);
 	glTexParameteri(target, GL_TEXTURE_WRAP_R,GL_REPEAT);
+	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, 5);
+
+	glGenerateMipmap(target);
 
 
 	return texture;
@@ -80,7 +128,7 @@ int compile_shader(const char** source, unsigned int type){
 	return shader;
 }
 
-int glslview_create_shader(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
+int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
 	int error = 1;
 
 	/**/
@@ -288,7 +336,7 @@ void glslview_set_viewport_gl(unsigned int width, unsigned int height){
 
 
 
-void glslview_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
+void glslview_rendergraphic_gl(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
 	int x;
 
 	for(x = 0; x < numShaderPass; x++){

@@ -86,10 +86,11 @@ unsigned int vbo = 0;						/*	*/
 SDL_GLContext glc;
 SDL_Window* window = NULL;						/*	Window.	*/
 SDL_Window* drawable = NULL;					/*	Window.	*/
-int fullscreen = 0;							/*	Set window fullscreen.	*/
-int verbose = 0;							/*	enable verbose.	*/
-int debug = 0;								/*	enable debugging.	*/
-int compression = 0;						/*	Use compression.	*/
+unsigned int renderingapi = 0;					/*	rendering api.	*/
+int fullscreen = 0;								/*	Set window fullscreen.	*/
+int verbose = 0;								/*	enable verbose.	*/
+int debug = 0;									/*	enable debugging.	*/
+int compression = 0;							/*	Use compression.	*/
 unsigned int isAlive = 1;						/*	*/
 int ifd = -1;									/*	inotify file descriptor.*/
 int wd = -1;									/*	inotify watch directory.	*/
@@ -113,14 +114,16 @@ int stdin_buffer_size = 1;						/*	*/
 
 
 /*	function pointers.	*/
+pglslview_init_renderingapi glslview_init_renderingapi = NULL;
 presize_screen glslview_resize_screen = NULL;
 pupdate_shader_uniform glslview_update_shader_uniform = NULL;
 pdisplaygraphic glslview_displaygraphic = NULL;
 pupdate_update_uniforms glslview_update_uniforms = NULL;
 pset_viewport glslview_set_viewport = NULL;
 pswapbufferfunctype glslview_swapbuffer	= NULL;					/*	Function pointer for swap default framebuffer.	*/
-
-
+pglslview_create_texture glslview_create_texture = NULL;
+pglslview_create_shader glslview_create_shader = NULL;
+pglslview_rendergraphic glslview_rendergraphic = NULL;
 
 
 
@@ -154,13 +157,13 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			{NULL, 0, NULL, 0}
 	};
 
-	/**/
+
 	int c;
 	int index;
 	int status = 1;
 	const char* shortopts = "dIsar:g:Vf:SA:t:vFnCp:w";
 
-	/*	*/
+	/*	First argument pass.	*/
 	if(pass == 0){
 		glslview_verbose_printf("--------- First argument pass -------\n\n");
 		while((c = getopt_long(argc, (char *const *)argv, shortopts, longoption, &index)) != EOF){
@@ -212,11 +215,15 @@ int glslview_readargument(int argc, const char** argv, int pass){
 						glslview_verbose_printf("Set rendering API to OpenGL-ES.\n");
 					}
 					else if(strcmp(optarg, "vulkan") == 0){
+						glslview_init_renderingapi = glslview_init_vulkan;
 						glslview_resize_screen = glslview_resize_screen_vk;
 						glslview_displaygraphic = glslview_displaygraphic_vk;
 						glslview_update_shader_uniform = glslview_update_shader_uniform_vk;
 						glslview_update_uniforms = glslview_update_uniforms_vk;
 						glslview_swapbuffer = SDL_GL_SwapWindow;
+						glslview_create_texture = glslview_create_texture_vk;
+						glslview_create_shader = glslview_create_shader_vk;
+						glslview_rendergraphic = glslview_rendergraphic_vk;
 						glslview_verbose_printf("Set rendering API to Vulkan.\n");
 					}
 				}
@@ -267,9 +274,10 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			glslview_verbose_printf("shader file %s\n", argv[optind]);
 		}
 
-	}else if(pass == 1){
+	}else if(pass == 1){	/*	Second argument pass.	*/
 		glslview_verbose_printf("--------- Second argument pass -------\n\n");
 
+		/**/
 		while((c = getopt_long(argc, (char *const *)argv, shortopts, longoption, &index)) != EOF){
 			switch(c){
 			case 'A':
@@ -492,14 +500,14 @@ void glslview_terminate(void){
 
 int main(int argc, const char** argv){
 	int status = EXIT_SUCCESS;				/*	*/
-	SDL_Event event = {0};						/*	*/
+	SDL_Event event = {0};					/*	*/
 	float ttime;
-	SDL_Point size;								/*	*/
-	char* fragData = NULL;						/*	*/
-	int x;										/*	*/
+	SDL_Point size;							/*	*/
+	char* fragData = NULL;					/*	*/
+	int x;									/*	*/
 
 	/**/
-	long int private_start;	/*	*/
+	long int private_start;					/*	*/
 	long int pretime;
 	long int deltatime;
 	int visable = 1;

@@ -19,7 +19,7 @@
 #ifndef _INTERNAL_H_
 #define _INTERNAL_H_ 1
 #include<SDL2/SDL.h>
-
+#include<assert.h>
 
 /*
  *	Unicode macro for converting constant string to
@@ -112,25 +112,29 @@ typedef struct glslview_texture_collection_t{
 
 
 
-
+typedef SDL_Window* (*pglslview_init_renderingapi)(void);
 typedef void (*pswapbufferfunctype)(SDL_Window* window);	/*	Function pointer data type.	*/
 typedef void (*presize_screen)(int* event, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
 typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
 typedef void (*pset_viewport)(unsigned int width, unsigned int height);
 typedef void (*pdisplaygraphic)(SDL_Window* drawable);
+typedef glslviewTexture* (*pglslview_create_texture)(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
+typedef int (*pglslview_create_shader)(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
+typedef void (*pglslview_rendergraphic)(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
+
 
 /**/
+extern pglslview_init_renderingapi glslview_init_renderingapi;
 extern presize_screen glslview_resize_screen;
 extern pupdate_shader_uniform glslview_update_shader_uniform;
 extern pdisplaygraphic glslview_displaygraphic;
 extern pupdate_update_uniforms glslview_update_uniforms;
 extern pset_viewport glslview_set_viewport;
 extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
-
-
-
-
+extern pglslview_create_texture glslview_create_texture;
+extern pglslview_create_shader glslview_create_shader;
+extern pglslview_rendergraphic glslview_rendergraphic;
 
 
 /**
@@ -151,7 +155,7 @@ extern int glslview_init(int argc, const char** argv);
 /**
  *	Get glslview version.
  *
- *	@Return
+ *	@Return non NULL string.
  */
 extern const char* glslview_getVersion(void);
 
@@ -160,58 +164,83 @@ extern const char* glslview_getVersion(void);
  */
 extern void glslview_catchSig(int signal);
 
+
 /**
+ *	Read user input argument.
  *
- *	@Return
+ *	@Return status.
  */
 extern int glslview_readargument(int argc, const char** argv, int pass);
 
 /**
+ *	Load file.
  *
  *	@Return
  */
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
 
-/*	TODO create function pointer.	*/
-glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
-/*	TODO create function pointer.	*/
-int glslview_create_shader(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
+
+
+/**
+ *
+ *	@Return
+ */
+extern SDL_Window* glslview_init_vulkan(void);
+extern SDL_Window* glslview_init_opengl(void);
+
+/**
+ *	TODO add enum for texture target.
+ *
+ *	@Return
+ */
+extern glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
+extern glslviewTexture* glslview_create_texture_vk(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
+
+
+/**
+ *
+ *
+ *	@Return status.
+ */
+extern int glslview_create_shader_gl(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
+extern int glslview_create_shader_vk(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
 
 /**
  *
  */
-void glslview_resize_screen_gl(int* res, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
-void glslview_resize_screen_vk(int* res, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
+extern void glslview_resize_screen_gl(int* res, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
+extern void glslview_resize_screen_vk(int* res, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
 
 /**
  *
  */
-void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
-void glslview_update_shader_uniform_vk(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
+extern void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
+extern void glslview_update_shader_uniform_vk(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
 
 /**
  *
  */
-void glslview_update_uniforms_gl(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
-void glslview_update_uniforms_vk(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
+extern void glslview_update_uniforms_gl(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
+extern void glslview_update_uniforms_vk(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
 
 /**
  *
  */
-void glslview_displaygraphic_gl(SDL_Window* drawable);
-void glslview_displaygraphic_vk(SDL_Window* drawable);
+extern void glslview_displaygraphic_gl(SDL_Window* drawable);
+extern void glslview_displaygraphic_vk(SDL_Window* drawable);
 
 /**
  *
  */
-void glslview_set_viewport_gl(unsigned int width, unsigned int height);
-void glslview_set_viewport_vk(unsigned int width, unsigned int height);
+extern void glslview_set_viewport_gl(unsigned int width, unsigned int height);
+extern void glslview_set_viewport_vk(unsigned int width, unsigned int height);
 
-
-
-void glslview_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
-
+/**
+ *
+ */
+extern void glslview_rendergraphic_gl(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
+extern void glslview_rendergraphic_vk(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
 
 
 
