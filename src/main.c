@@ -475,7 +475,7 @@ void glslview_catchSig(int signal){
 		break;
 	case SIGTERM:
 	case SIGABRT:
-		exit(0);
+		exit(EXIT_FAILURE);
 		break;
 	case SIGPIPE:
 		if(use_stdin_as_buffer){

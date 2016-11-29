@@ -20,10 +20,7 @@
 #include<SDL2/SDL.h>
 
 /*	TODO remove glsl function later.	*/
-#include<GL/gl.h>
-#include<GL/glext.h>
 
-#include<regex.h>
 
 #include<getopt.h>
 #include<string.h>
@@ -33,8 +30,6 @@
 
 #include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
 
-
-#include<FreeImage.h>
 
 
 
@@ -125,12 +120,7 @@ int glslview_init(int argc, const char** argv){
 	SDL_SetWindowSize(window, displaymode.w, displaymode.h );
 
 
-	/*	Display OpenGL information.	*/
-	glslview_verbose_printf("-------------- OpenGL Information ------------------\n");
-	glslview_verbose_printf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
-	glslview_verbose_printf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
-	glslview_verbose_printf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-	glslview_verbose_printf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
+
 
 	/*	*/
 	if(glslview_readargument(argc, argv, 1) == 2){
@@ -181,40 +171,6 @@ int glslview_init(int argc, const char** argv){
 		}
 	}
 
-
-
-
-
-
-
-
-
-	/*	generate vertex array for quad.	*/
-	glslview_verbose_printf("----------- constructing rendering quad. ----------\n");
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(1, &vbo);
-
-	/*	*/
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
-
-	/*	*/
-	glBindVertexArray(0);
-
-
-
-	glViewport(0, 0, displaymode.w, displaymode.h);
-
-	/*	*/
-	glBindVertexArray(vao);
-
-
-
-
-
 	return status;
 }
 
@@ -233,7 +189,7 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 	long int pos;
 	*bufferptr = NULL;
 
-	if(!cfilename || strlen(cfilename) == 0){
+	if(!cfilename){
 		return -1;
 	}
 
@@ -242,7 +198,7 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 		return -1;
 	}
 
-	/**/
+	/*	Get file length in bytes.	*/
     pos = ftell(f);
     fseek(f, 0,SEEK_END);
     length = ftell(f);

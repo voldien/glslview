@@ -42,6 +42,14 @@ SDL_Window* glslview_init_opengl(void){
 	SDL_GL_MakeCurrent(win, glc);
 
 
+	/*	Display OpenGL information.	*/
+	glslview_verbose_printf("-------------- OpenGL Information ------------------\n");
+	glslview_verbose_printf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
+	glslview_verbose_printf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
+	glslview_verbose_printf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	glslview_verbose_printf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
+
+
 	/*	*/
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
@@ -61,6 +69,32 @@ SDL_Window* glslview_init_opengl(void){
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 		glDisable(GL_ALPHA_TEST);
 	}
+
+
+
+	/*	Generate vertex array for quad.	*/
+	glslview_verbose_printf("----------- constructing rendering quad. ----------\n");
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glGenBuffers(1, &vbo);
+
+	/*	*/
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
+
+	/*	*/
+	glBindVertexArray(0);
+
+
+
+	glViewport(0, 0, displaymode.w, displaymode.h);
+
+	/*	*/
+	glBindVertexArray(vao);
+
+
 
 	return win;
 }

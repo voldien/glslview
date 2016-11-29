@@ -160,7 +160,7 @@ extern int glslview_init(int argc, const char** argv);
 extern const char* glslview_getVersion(void);
 
 /**
- *
+ *	Signal catch function.
  */
 extern void glslview_catchSig(int signal);
 
@@ -175,7 +175,7 @@ extern int glslview_readargument(int argc, const char** argv, int pass);
 /**
  *	Load file.
  *
- *	@Return
+ *	@Return number of bytes loaded.
  */
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
