@@ -398,6 +398,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 
 						if(bitmap){
 							glslview_verbose_printf("Reading texture %s for uniform tex%d.\n", argv[optind + x -1], nextTex);
+							/*texturess = (glslviewTextureCollection*)realloc(texturess, (nextTex + 1) * sizeof(glslviewTextureCollection));*/
 
 							/*	Extracting texture attributes.	*/
 							colortype = FreeImage_GetColorType(bitmap);

@@ -249,11 +249,15 @@ extern void glslview_rendergraphic_vk(SDL_Window* drawable, glslviewShaderCollec
  *	Print verbose.
  *	The function will print depending on if the
  *	verbose variable is true or not.
+ *
+ *	@Return
  */
 extern int glslview_verbose_printf(const char* format,...);
 
 /**
  *	Print debug.
+ *
+ *	@Return
  */
 extern int glslview_debug_printf(const char* format,...);
 
@@ -282,13 +286,14 @@ extern unsigned int numFragPaths;					/*	*/
 extern unsigned int numShaderPass;
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
 
-extern glslviewShaderCollection* shaders;			/*	*/
+extern glslviewShaderCollection* shaders;			/*	Shaders.	*/
 extern unsigned int fbo;							/*	*/
 extern unsigned int ftextype;
 extern unsigned int ftexinternalformat;
 extern unsigned int ftexformat;
 extern glslviewTexture fbackbuffertex;				/*	framebuffer texture for backbuffer uniform variable.	*/
 extern glslviewTexture textures[8];					/*	*/
+extern glslviewTextureCollection* texturess;		/*	TODO replace textures variable.	*/
 extern const int numTextures;						/*	*/
 extern unsigned int nextTex;						/*	*/
 extern unsigned int isPipe;							/*	*/
