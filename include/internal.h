@@ -183,8 +183,10 @@ extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
 
 /**
+ *	Initialize	rendering API and create window
+ *	associate with the rendering API.
  *
- *	@Return
+ *	@Return None null pointer if successfully.
  */
 extern SDL_Window* glslview_init_vulkan(void);
 extern SDL_Window* glslview_init_opengl(void);
@@ -283,7 +285,7 @@ extern int ifd;										/*	inotify file descriptor.*/
 extern int wd;										/*	inotify watch directory.	*/
 extern char* inotifybuf;							/*	*/
 extern unsigned int numFragPaths;					/*	*/
-extern unsigned int numShaderPass;
+extern unsigned int numShaderPass;					/*	*/
 extern char* fragPath[32];							/*	Path of fragment shader.	*/
 
 extern glslviewShaderCollection* shaders;			/*	Shaders.	*/

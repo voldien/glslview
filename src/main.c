@@ -568,6 +568,10 @@ int main(int argc, const char** argv){
 		/**/
 		while(SDL_PollEvent(&event)){
 
+			if(event.type == SDL_QUIT){
+				isAlive = SDL_FALSE;
+			}
+
 			/**/
 			if(event.type == SDL_KEYDOWN){
 				printf("%d\n", event.key.keysym.sym);
