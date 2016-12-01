@@ -22,9 +22,78 @@
 #include<unistd.h>
 #include<GL/gl.h>
 #include<GL/glext.h>
+#include<SDL2/SDL.h>
+
+SDL_Window* glslview_init_opengl(void){
+	SDL_Window* win;
+	SDL_DisplayMode displaymode;
+	int glatt;
+
+	SDL_GetCurrentDisplayMode(0, &displaymode);
+	displaymode.w /= 2;
+	displaymode.h /= 2;
+	win = SDL_CreateWindow("", displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+
+	if(win == NULL){
+		return NULL;
+	}
+
+	glc = SDL_GL_CreateContext(win);
+	SDL_GL_MakeCurrent(win, glc);
+	assert(glc);
 
 
-glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
+	/*	Display OpenGL information.	*/
+	glslview_verbose_printf("-------------- OpenGL Information ------------------\n");
+	glslview_verbose_printf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
+	glslview_verbose_printf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
+	glslview_verbose_printf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+	glslview_verbose_printf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
+
+
+	/*	*/
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glDepthMask(GL_FALSE);
+	glDisable(GL_STENCIL_TEST);
+
+	/*	*/
+	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
+	if(glatt > 0){
+		glClearColor(0.0, 0.0, 0.0, 1.0);
+		glEnable(GL_ALPHA_TEST);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	}
+	else{
+		glClearColor(0.0, 0.0, 0.0, 0.0);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+		glDisable(GL_ALPHA_TEST);
+	}
+
+
+
+	/*	Generate vertex array for quad.	*/
+	glslview_verbose_printf("----------- constructing rendering quad. ----------\n");
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	glGenBuffers(1, &vbo);
+
+	/*	*/
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
+
+	/**/
+	glslview_set_viewport_gl(displaymode.w, displaymode.h);
+
+	return win;
+}
+
+
+
+glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
 
 	if(!texture){
 		return NULL;
@@ -46,6 +115,8 @@ glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int 
 	case GL_TEXTURE_2D:
 		glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
 		break;
+	default:
+		break;
 	}
 
 
@@ -54,6 +125,9 @@ glslviewTexture* glslview_create_texture(glslviewTexture* texture, unsigned int 
 	glTexParameteri(target, GL_TEXTURE_WRAP_S,GL_REPEAT);
 	glTexParameteri(target, GL_TEXTURE_WRAP_T,GL_REPEAT);
 	glTexParameteri(target, GL_TEXTURE_WRAP_R,GL_REPEAT);
+	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, 5);
+
+	glGenerateMipmap(target);
 
 
 	return texture;
@@ -80,7 +154,7 @@ int compile_shader(const char** source, unsigned int type){
 	return shader;
 }
 
-int glslview_create_shader(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
+int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
 	int error = 1;
 
 	/**/
@@ -144,7 +218,7 @@ void glslview_resize_screen_gl(int* res, UniformLocation* uniform, glslviewShade
 
 	float resolution[2] = {res[0], res[1]};
 	glUniform2fv(uniform->resolution, 1, &resolution[0]);
-	privatefprintf("%dx%d.\n", res[0], res[1]);
+	glslview_verbose_printf("%dx%d.\n", res[0], res[1]);
 	/**/
 
 
@@ -160,7 +234,7 @@ void glslview_resize_screen_gl(int* res, UniformLocation* uniform, glslviewShade
 void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height){
 	float res[2];
 
-	privatefprintf("----------- fetching uniforms index location ----------\n");
+	glslview_verbose_printf("----------- fetching uniforms index location ----------\n");
 	uniform->time = glGetUniformLocation(shader->program, "time");
 	uniform->deltatime = glGetUniformLocation(shader->program, "deltatime");
 	uniform->resolution = glGetUniformLocation(shader->program, "resolution");
@@ -190,33 +264,34 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 	uniform->view = glGetUniformLocation(shader->program, "view");
 
 
-	debugprintf("time %d\n", uniform->time);
-	debugprintf("deltatime %d\n", uniform->deltatime);
-	debugprintf("resolution %d\n", uniform->resolution);
-	debugprintf("mouse %d\n", uniform->mouse);
-	debugprintf("offset %d\n", uniform->offset);
-	debugprintf("stdin %d\n", uniform->stdin);
-	debugprintf("tex0 %d\n", uniform->tex0);
-	debugprintf("tex1 %d\n", uniform->tex1);
-	debugprintf("tex2 %d\n", uniform->tex2);
-	debugprintf("tex3 %d\n", uniform->tex3);
-	debugprintf("tex4 %d\n", uniform->tex4);
-	debugprintf("tex5 %d\n", uniform->tex5);
-	debugprintf("tex6 %d\n", uniform->tex6);
-	debugprintf("tex7 %d\n", uniform->tex7);
-	debugprintf("tex8 %d\n", uniform->tex8);
-	debugprintf("tex9 %d\n", uniform->tex9);
-	debugprintf("tex10 %d\n", uniform->tex10);
-	debugprintf("tex11 %d\n", uniform->tex11);
-	debugprintf("tex12 %d\n", uniform->tex12);
-	debugprintf("tex13 %d\n", uniform->tex13);
-	debugprintf("tex14 %d\n", uniform->tex14);
-	debugprintf("tex15 %d\n", uniform->tex15);
-	debugprintf("backbuffer %d\n", uniform->backbuffer);
-	debugprintf("mvp %d\n", uniform->mvp);
-	debugprintf("model%d\n", uniform->model);
-	debugprintf("perspective %d\n", uniform->perspective);
-	debugprintf("view %d\n", uniform->view);
+	glslview_debug_printf("time %d\n", uniform->time);
+	glslview_debug_printf("deltatime %d\n", uniform->deltatime);
+	glslview_debug_printf("resolution %d\n", uniform->resolution);
+	glslview_debug_printf("mouse %d\n", uniform->mouse);
+	glslview_debug_printf("offset %d\n", uniform->offset);
+	glslview_debug_printf("stdin %d\n", uniform->stdin);
+	glslview_debug_printf("tex0 %d\n", uniform->tex0);
+	glslview_debug_printf("tex1 %d\n", uniform->tex1);
+	glslview_debug_printf("tex2 %d\n", uniform->tex2);
+	glslview_debug_printf("tex3 %d\n", uniform->tex3);
+	glslview_debug_printf("tex4 %d\n", uniform->tex4);
+	glslview_debug_printf("tex5 %d\n", uniform->tex5);
+	glslview_debug_printf("tex6 %d\n", uniform->tex6);
+	glslview_debug_printf("tex7 %d\n", uniform->tex7);
+	glslview_debug_printf("tex8 %d\n", uniform->tex8);
+	glslview_debug_printf("tex9 %d\n", uniform->tex9);
+	glslview_debug_printf("tex10 %d\n", uniform->tex10);
+	glslview_debug_printf("tex11 %d\n", uniform->tex11);
+	glslview_debug_printf("tex12 %d\n", uniform->tex12);
+	glslview_debug_printf("tex13 %d\n", uniform->tex13);
+	glslview_debug_printf("tex14 %d\n", uniform->tex14);
+	glslview_debug_printf("tex15 %d\n", uniform->tex15);
+	glslview_debug_printf("backbuffer %d\n", uniform->backbuffer);
+	glslview_debug_printf("mvp %d\n", uniform->mvp);
+	glslview_debug_printf("model%d\n", uniform->model);
+	glslview_debug_printf("perspective %d\n", uniform->perspective);
+	glslview_debug_printf("view %d\n", uniform->view);
+
 
 	glUseProgram(shader->program);
 
@@ -225,7 +300,7 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 	glUniform2fv(uniform->resolution, 1, &res[0]);
 
 	/**/
-	privatefprintf("----------- Assigning texture sampler index ----------\n");
+	glslview_verbose_printf("----------- Assigning texture sampler index ----------\n");
 	glUniform1i(uniform->tex0, 0);
 	glUniform1i(uniform->tex1, 1);
 	glUniform1i(uniform->tex2, 2);
@@ -251,7 +326,7 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 			glDeleteTextures(1, &fbackbuffertex.texture);
 		}
 		glslview_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, ftexinternalformat, width, height, 0, ftexformat, ftextype, NULL);
-		privatefprintf("Created backbuffer.	\n");
+		glslview_verbose_printf("Created backbuffer.	\n");
 	}else{
 		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
 			glDeleteTextures(1, &fbackbuffertex.texture);
@@ -306,7 +381,7 @@ void glslview_set_viewport_gl(unsigned int width, unsigned int height){
 
 
 
-void glslview_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
+void glslview_rendergraphic_gl(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
 	int x;
 
 	for(x = 0; x < numShaderPass; x++){

@@ -20,10 +20,7 @@
 #include<SDL2/SDL.h>
 
 /*	TODO remove glsl function later.	*/
-#include<GL/gl.h>
-#include<GL/glext.h>
 
-#include<regex.h>
 
 #include<getopt.h>
 #include<string.h>
@@ -33,8 +30,6 @@
 
 #include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
 
-
-#include<FreeImage.h>
 
 
 
@@ -53,12 +48,16 @@
 
 
 void glslview_default_init(void){
+	glslview_init_renderingapi = glslview_init_opengl;
 	glslview_resize_screen = glslview_resize_screen_gl;
 	glslview_displaygraphic = glslview_displaygraphic_gl;
 	glslview_update_shader_uniform = glslview_update_shader_uniform_gl;
 	glslview_update_uniforms = glslview_update_uniforms_gl;
 	glslview_set_viewport = glslview_set_viewport_gl;
 	glslview_swapbuffer = SDL_GL_SwapWindow;
+	glslview_create_texture = glslview_create_texture_gl;
+	glslview_create_shader = glslview_create_shader_gl;
+	glslview_rendergraphic = glslview_rendergraphic_gl;
 }
 
 
@@ -68,8 +67,8 @@ int glslview_init(int argc, const char** argv){
 	long int srclen;							/*	*/
 
 	SDL_DisplayMode displaymode;
+	SDL_version sdlver;
 	char title[512];							/*	*/
-	int glatt;
 	char* fragData = NULL;						/*	*/
 	int x;										/*	*/
 
@@ -78,23 +77,28 @@ int glslview_init(int argc, const char** argv){
 	glslview_default_init();
 
 
+
+
+	/**/
+	printf("\n");
+	printf("glslview v%s\n", glslview_getVersion());
+	/*	Initialize SDL.	*/
+	SDL_GetVersion(&sdlver);
+	glslview_verbose_printf("SDL version %d.%d.%d\n", sdlver.major, sdlver.minor, sdlver.patch);
+	printf("==================\n\n");
+
+	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0){
+		status = EXIT_FAILURE;
+		return status;
+	}
+
+
 	/*	*/
 	if(glslview_readargument(argc, argv, 0) == 2){
 		return EXIT_SUCCESS;
 	}
 	numShaderPass = numFragPaths;
 
-	/**/
-	printf("\n");
-	printf("glslview v%d.%d.%d\n", GLSLVIEW_MAJOR_VERSION, GLSLVIEW_MINOR_VERSION, GLSLVIEW_REVISION_VERSION);
-	printf("==================\n\n");
-
-	/*	Initialize SDL.	*/
-	//privatefprintf("ELT version %s\n", ExGetVersion());
-	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0){
-		status = EXIT_FAILURE;
-		return status;
-	}
 
 	/*	*/
 	signal(SIGILL, glslview_catchSig);
@@ -106,31 +110,21 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Create window. */
-	SDL_GetCurrentDisplayMode(0, &displaymode);
-	displaymode.w /= 2;
-	displaymode.h /= 2;
-	sprintf(title, "glslview %s", glslview_getVersion());
-	window = SDL_CreateWindow(title, displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+	window = glslview_init_renderingapi();
 	if(!window){
 		status = EXIT_FAILURE;
 		return status;
 	}
-	glc = SDL_GL_CreateContext(window);
-	SDL_GL_MakeCurrent(window, glc);
 
 	/*	*/
+	sprintf(title, "glslview %s", glslview_getVersion());
 	SDL_ShowWindow(window);
 	SDL_SetWindowTitle(window, title);
 	SDL_SetWindowPosition(window, displaymode.w / 2, displaymode.h / 2);
 	SDL_SetWindowSize(window, displaymode.w, displaymode.h );
 
 
-	/*	Display OpenGL information.	*/
-	privatefprintf("-------------- OpenGL Information ------------------\n");
-	privatefprintf("OpenGL vendor string: %s.\n", glGetString(GL_VENDOR));
-	privatefprintf("OpenGL version string: %s.\n", glGetString(GL_VERSION));
-	privatefprintf("OpenGL shading language version string %s.\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-	privatefprintf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
+
 
 	/*	*/
 	if(glslview_readargument(argc, argv, 1) == 2){
@@ -140,7 +134,7 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Load shader fragment source code.	*/
-	privatefprintf("----------- fetching source code ----------\n");
+	glslview_verbose_printf("----------- fetching source code ----------\n");
 	shaders = malloc(sizeof(glslviewShaderCollection) * numFragPaths);
 	memset(shaders, 0, sizeof(glslviewShaderCollection) * numFragPaths);
 	/**/
@@ -163,10 +157,10 @@ int glslview_init(int argc, const char** argv){
 			else
 				cvertex = vertex;
 			srclen = glslview_loadfile((const char*)fragPath[x], (void**)&fragData);
-			debugprintf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
+			glslview_debug_printf("Loaded shader file %s, with size of %d bytes.\n", fragPath[x], srclen);
 
 			/*	compile shader.	*/
-			privatefprintf("----------- compiling source code ----------\n");
+			glslview_verbose_printf("----------- compiling source code ----------\n");
 			if(glslview_create_shader(&shaders[x].shader, cvertex, fragData, NULL, NULL, NULL) == 0){
 				fprintf(stderr, "Invalid shader.\n");
 				status = EXIT_FAILURE;
@@ -184,64 +178,6 @@ int glslview_init(int argc, const char** argv){
 			free(fragData);
 			fragData = NULL;
 		}
-	}
-
-
-
-
-
-
-
-
-
-	/*	generate vertex array for quad.	*/
-	privatefprintf("----------- constructing rendering quad. ----------\n");
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(1, &vbo);
-
-	/*	*/
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
-
-	/*	*/
-	glBindVertexArray(0);
-
-	/*	*/
-	if(usepolygone){
-		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_CULL_FACE);
-		glDisable(GL_BLEND);
-		glDepthMask(GL_TRUE);
-		glDisable(GL_STENCIL_TEST);
-	}else{
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_CULL_FACE);
-		glDisable(GL_BLEND);
-		glDepthMask(GL_FALSE);
-		glDisable(GL_STENCIL_TEST);
-	}
-
-	glViewport(0, 0, displaymode.w, displaymode.h);
-
-	/*	*/
-	glBindVertexArray(vao);
-
-
-
-	/*	*/
-	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
-	if(glatt > 0){
-		glClearColor(0.0, 0.0, 0.0, 1.0);
-		glEnable(GL_ALPHA_TEST);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	}
-	else{
-		glClearColor(0.0, 0.0, 0.0, 0.0);
-		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-		glDisable(GL_ALPHA_TEST);
 	}
 
 	return status;
@@ -262,7 +198,7 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 	long int pos;
 	*bufferptr = NULL;
 
-	if(!cfilename || strlen(cfilename) == 0){
+	if(!cfilename){
 		return -1;
 	}
 
@@ -271,7 +207,7 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 		return -1;
 	}
 
-	/**/
+	/*	Get file length in bytes.	*/
     pos = ftell(f);
     fseek(f, 0,SEEK_END);
     length = ftell(f);
@@ -287,8 +223,7 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 }
 
 
-/**/
-int privatefprintf(const char* format,...){
+int glslview_verbose_printf(const char* format,...){
 	va_list larg;
 	int status;
 
@@ -303,7 +238,7 @@ int privatefprintf(const char* format,...){
 	return status;
 }
 
-int debugprintf(const char* format,...){
+int glslview_debug_printf(const char* format,...){
 	va_list larg;
 	int status;
 
