@@ -77,11 +77,7 @@ int glslview_init(int argc, const char** argv){
 	glslview_default_init();
 
 
-	/*	*/
-	if(glslview_readargument(argc, argv, 0) == 2){
-		return EXIT_SUCCESS;
-	}
-	numShaderPass = numFragPaths;
+
 
 	/**/
 	printf("\n");
@@ -95,6 +91,14 @@ int glslview_init(int argc, const char** argv){
 		status = EXIT_FAILURE;
 		return status;
 	}
+
+
+	/*	*/
+	if(glslview_readargument(argc, argv, 0) == 2){
+		return EXIT_SUCCESS;
+	}
+	numShaderPass = numFragPaths;
+
 
 	/*	*/
 	signal(SIGILL, glslview_catchSig);

@@ -138,10 +138,10 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			{"notify-file", 	no_argument, 		NULL, 'n'},				/*	enable inotify notification.	*/
 			{"srgb",			no_argument, 		NULL, 'S'},				/*	sRGB.	*/
 			{"Verbose", 		no_argument, 		NULL, 'V'},				/*	Verbose.	*/
+			{"no-decoration", 	no_argument,	 	NULL, 'D'},				/*	Use no window decoration.	*/
 			{"wallpaper", 		optional_argument, 	NULL, 'w'},				/*	use as wallpaper.	*/
 			{"vsync", 			optional_argument, 	NULL, 's'},				/*	enable vsync.	*/
 			{"stdin",			optional_argument, 	NULL, 'I'},				/*	stdin data as buffer.	*/
-			{"no-decoration", 	optional_argument, 	NULL, 'D'},				/*	*/
 			{"debug", 			optional_argument, 	NULL, 'd'},				/*	Set application in debug mode.	*/
 			{"antialiasing", 	optional_argument, 	NULL, 'A'},				/*	anti aliasing.	*/
 			{"compression",		optional_argument, 	NULL, 'C'},				/*	Texture compression.	*/
@@ -161,7 +161,8 @@ int glslview_readargument(int argc, const char** argv, int pass){
 	int c;
 	int index;
 	int status = 1;
-	const char* shortopts = "dIsar:g:Vf:SA:t:vFnCp:w";
+	const char* shortopts = "dDIsar:g:Vf:SA:t:vFnCp:w";
+
 
 	/*	First argument pass.	*/
 	if(pass == 0){
@@ -178,6 +179,9 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				break;
 			case 'd':{	/*	enable debug.	*/
 			    debug = SDL_TRUE;
+			    int glatt;
+			    SDL_GL_GetAttribute(SDL_GL_CONTEXT_FLAGS, &glatt);
+			    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, glatt | SDL_GL_CONTEXT_DEBUG_FLAG);
 			}break;
 			case 'a':
 				glslview_verbose_printf("Enable alpha buffer.\n");
@@ -202,8 +206,11 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				break;
 			case 'r':
 				if(optarg != NULL){
+					int glatt;
 					if(strcmp(optarg, "opengl") == 0){
+
 						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+						SDL_GL_GetAttribute(SDL_GL_CONTEXT_FLAGS, &glatt);
 						glslview_verbose_printf("Set rendering API to OpenGL.\n");
 					}
 					if(strcmp(optarg, "openglcore") == 0){
@@ -339,6 +346,9 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				glslview_verbose_printf("Enable V-Sync.\n");
 				SDL_GL_SetSwapInterval(1);
 				break;
+			case 'D':
+				SDL_SetWindowBordered(window, SDL_FALSE);
+				break;
 			case 'n':{
 				char buf[4096];
 				int x;
@@ -408,6 +418,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 							bitdata = FreeImage_GetBits(bitmap);
 
 
+							/*	TODO Fix with the constants. */
 							switch(colortype){
 							case FIC_RGB:
 								gformat = GL_RGB;
@@ -415,12 +426,11 @@ int glslview_readargument(int argc, const char** argv, int pass){
 								break;
 							case FIC_RGBALPHA:
 								gformat = GL_RGBA;
-								ginternalformat = GL_RGB;
+								ginternalformat = GL_RGBA;
 								break;
 							default:
 								break;
 							}
-
 
 							if(compression){
 								/*	get opengl internal compression format.	*/

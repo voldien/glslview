@@ -201,7 +201,7 @@ extern glslviewTexture* glslview_create_texture_vk(glslviewTexture* texture, uns
 
 
 /**
- *
+ *	Create shader.
  *
  *	@Return status.
  */

@@ -40,6 +40,7 @@ SDL_Window* glslview_init_opengl(void){
 
 	glc = SDL_GL_CreateContext(win);
 	SDL_GL_MakeCurrent(win, glc);
+	assert(glc);
 
 
 	/*	Display OpenGL information.	*/
@@ -84,17 +85,8 @@ SDL_Window* glslview_init_opengl(void){
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
 
-	/*	*/
-	glBindVertexArray(0);
-
-
-
-	glViewport(0, 0, displaymode.w, displaymode.h);
-
-	/*	*/
-	glBindVertexArray(vao);
-
-
+	/**/
+	glslview_set_viewport_gl(displaymode.w, displaymode.h);
 
 	return win;
 }
