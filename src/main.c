@@ -415,7 +415,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 							width = FreeImage_GetWidth(bitmap);
 							height = FreeImage_GetHeight(bitmap);
 							bpp = FreeImage_GetBPP(bitmap);
-							bitdata = FreeImage_GetBits(bitmap);
+
 
 
 							/*	TODO Fix with the constants. */
@@ -423,10 +423,12 @@ int glslview_readargument(int argc, const char** argv, int pass){
 							case FIC_RGB:
 								gformat = GL_RGB;
 								ginternalformat = GL_RGB;
+								bitmap = FreeImage_ConvertTo24Bits(bitmap);
 								break;
 							case FIC_RGBALPHA:
 								gformat = GL_RGBA;
 								ginternalformat = GL_RGBA;
+								bitmap = FreeImage_ConvertTo32Bits(bitmap);
 								break;
 							default:
 								break;
@@ -443,6 +445,8 @@ int glslview_readargument(int argc, const char** argv, int pass){
 									break;
 								}
 							}
+
+							bitdata = FreeImage_GetBits(bitmap);
 
 							/*	Create opengl 2D texture.	*/
 							glslview_create_texture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
