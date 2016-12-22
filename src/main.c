@@ -582,33 +582,26 @@ int main(int argc, const char** argv){
 		/**/
 		while(SDL_PollEvent(&event)){
 
-			if(event.type == SDL_QUIT){
+			switch(event.type){
+			case SDL_QUIT:
 				isAlive = SDL_FALSE;
-			}
-
-			/**/
-			if(event.type == SDL_KEYDOWN){
+			break;
+			case SDL_KEYDOWN:
 				printf("%d\n", event.key.keysym.sym);
 				if(event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_CTRL )){
 					fullscreen = ~fullscreen & SDL_TRUE;
 					SDL_SetWindowFullscreen( window, fullscreen == SDL_TRUE ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 				}
-			}
-
-			/**/
-			if(event.type == SDL_MOUSEMOTION){
-
-				float mouse[2];// = {location.x , -location.y };
+			break;
+			case SDL_MOUSEMOTION:
+				float mouse[2];
 				for(x = 0; x < numShaderPass; x++){
 					glUniform2fv(shaders[x].uniform.mouse, 1, &mouse[0]);
 				}
-			}
-
-			if(event.type == SDL_MOUSEWHEEL){
-
-			}
-
-			if(event.type == SDL_WINDOWEVENT){
+			break;
+			case SDL_MOUSEWHEEL:
+			break;
+			case SDL_WINDOWEVENT:
 				switch(event.window.event){
 				case SDL_WINDOWEVENT_RESIZED:
 					glslview_set_viewport(event.window.data1, event.window.data2);
@@ -638,15 +631,13 @@ int main(int argc, const char** argv){
 				default:
 					break;
 				}
+				break;
+				default:
+					break;
 			}
-
-			/*
-			if( ( event.event & EX_EVENT_WINDOW_DESTROYED ) && event.destroy.window == window){
-				isAlive = FALSE;
-				goto error;
-			}
-			*/
 		}
+
+
 
 		ttime = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9);
 		deltatime = SDL_GetPerformanceCounter() - pretime;
