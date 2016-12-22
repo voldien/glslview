@@ -626,6 +626,11 @@ int main(int argc, const char** argv){
 				case SDL_WINDOWEVENT_SHOWN:
 				case SDL_WINDOWEVENT_EXPOSED:
 					visable = SDL_TRUE;
+					SDL_GetWindowSize(window, &size.x, &size.y);
+					glslview_set_viewport(size.x, size.y);
+					for(x = 0; x < numShaderPass; x++){
+						glslview_resize_screen(&size.x, &shaders[x].uniform, &shaders[x], &fbackbuffertex);
+					}
 					break;
 				case SDL_WINDOWEVENT_HIDDEN:
 					visable = SDL_FALSE;
