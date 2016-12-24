@@ -180,7 +180,12 @@ extern int glslview_readargument(int argc, const char** argv, int pass);
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
 
-
+#define TEXTURE_RGB 0x1
+#define TEXTURE_RGBA 0x2
+#define TEXTURE_COMPRESSION_RGB 0x3
+#define TEXTURE_COMPRESSION_RGBA 0x4
+#define TEXTURE_BGR 0x5
+#define TEXTURE_BGRA 0x6
 
 /**
  *	Initialize	rendering API and create window

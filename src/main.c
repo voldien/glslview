@@ -421,13 +421,13 @@ int glslview_readargument(int argc, const char** argv, int pass){
 							/*	TODO Fix with the constants. */
 							switch(colortype){
 							case FIC_RGB:
-								gformat = GL_RGB;
-								ginternalformat = GL_RGB;
+								gformat = TEXTURE_RGB;
+								ginternalformat = TEXTURE_RGB;
 								bitmap = FreeImage_ConvertTo24Bits(bitmap);
 								break;
 							case FIC_RGBALPHA:
-								gformat = GL_RGBA;
-								ginternalformat = GL_RGBA;
+								gformat = TEXTURE_RGBA;
+								ginternalformat = TEXTURE_RGBA;
 								bitmap = FreeImage_ConvertTo32Bits(bitmap);
 								break;
 							default:
@@ -438,10 +438,10 @@ int glslview_readargument(int argc, const char** argv, int pass){
 								/*	get opengl internal compression format.	*/
 								switch(gformat){
 								case GL_RGB:
-									ginternalformat = GL_COMPRESSED_RGB;
+									ginternalformat = TEXTURE_RGB;
 								break;
 								case GL_RGBA:
-									ginternalformat = GL_COMPRESSED_RGBA;
+									ginternalformat = TEXTURE_RGBA;
 									break;
 								}
 							}
@@ -520,6 +520,7 @@ int main(int argc, const char** argv){
 	SDL_Point size;							/*	*/
 	char* fragData = NULL;					/*	*/
 	int x;									/*	*/
+	float mouse[2];
 
 	/**/
 	long int private_start;					/*	*/
@@ -561,20 +562,7 @@ int main(int argc, const char** argv){
 	}
 
 
-	/*	*/
-	if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
-		glActiveTexture(GL_TEXTURE0 + numTextures);
-		glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
-	}
 
-	/*	Bind all textures.	*/
-	for(x = 0; x < numTextures; x++){
-		if(glIsTexture(textures[x].texture) == GL_TRUE){
-			glslview_verbose_printf("Binding texture %d.\n", x);
-			glActiveTexture(GL_TEXTURE0 + x);
-			glBindTexture(textures[x].target, textures[x].texture);
-		}
-	}
 
 	/*	*/
 	while(isAlive){
@@ -594,7 +582,7 @@ int main(int argc, const char** argv){
 				}
 			break;
 			case SDL_MOUSEMOTION:
-				float mouse[2];
+
 				for(x = 0; x < numShaderPass; x++){
 					glUniform2fv(shaders[x].uniform.mouse, 1, &mouse[0]);
 				}

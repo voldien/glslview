@@ -28,6 +28,7 @@ SDL_Window* glslview_init_opengl(void){
 	SDL_Window* win;
 	SDL_DisplayMode displaymode;
 	int glatt;
+	int x;
 
 	SDL_GetCurrentDisplayMode(0, &displaymode);
 	displaymode.w /= 2;
@@ -88,6 +89,23 @@ SDL_Window* glslview_init_opengl(void){
 	/**/
 	glslview_set_viewport_gl(displaymode.w, displaymode.h);
 
+	/*	*/
+	if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
+		glActiveTexture(GL_TEXTURE0 + numTextures);
+		glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
+	}
+
+	/*	Bind all textures.	*/
+	for(x = 0; x < numTextures; x++){
+		if(glIsTexture(textures[x].texture) == GL_TRUE){
+			glslview_verbose_printf("Binding texture %d.\n", x);
+			glActiveTexture(GL_TEXTURE0 + x);
+			glBindTexture(textures[x].target, textures[x].texture);
+		}
+	}
+
+
+
 	return win;
 }
 
@@ -99,12 +117,54 @@ glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned i
 		return NULL;
 	}
 
+	/*	*/
+	switch(internalFormat){
+	case TEXTURE_RGB:
+		internalFormat = GL_RGB;
+		break;
+	case TEXTURE_RGBA:
+		internalFormat = GL_RGBA;
+		break;
+	case TEXTURE_COMPRESSION_RGB:
+		internalFormat = GL_COMPRESSED_RGB;
+		break;
+	case TEXTURE_COMPRESSION_RGBA:
+		internalFormat = GL_COMPRESSED_RGBA;
+		break;
+	case TEXTURE_BGR:
+		internalFormat = GL_BGR;
+		break;
+	case TEXTURE_BGRA:
+		internalFormat = GL_BGRA;
+		break;
+	}
+
+
+	/*	*/
+	switch(format){
+	case TEXTURE_RGB:
+		format = GL_RGB;
+		break;
+	case TEXTURE_RGBA:
+		format = GL_RGBA;
+		break;
+	case TEXTURE_BGR:
+		format = GL_BGR;
+		break;
+	case TEXTURE_BGRA:
+		format = GL_BGRA;
+		break;
+	}
+
 	texture->target = target;
 	texture->internalformat = internalFormat;
 	texture->width = width;
 	texture->height = height;
 	texture->internalformat = format;
 	texture->type = type;
+
+
+
 
 
 	glGenTextures(1, &texture->texture);
