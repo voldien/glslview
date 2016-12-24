@@ -514,37 +514,44 @@ void glslview_terminate(void){
 
 
 int main(int argc, const char** argv){
-	int status = EXIT_SUCCESS;				/*	*/
+	int status = EXIT_SUCCESS;				/*	Exit status.	*/
 	SDL_Event event = {0};					/*	*/
-	float ttime;
+	float elapse;							/*	Time elapse since start.	*/
 	SDL_Point size;							/*	*/
 	char* fragData = NULL;					/*	*/
-	int x;									/*	*/
-	float mouse[2];
+	int x;									/*	iterator.	*/
+	float mouse[2];							/*	*/
 
 	/**/
-	long int private_start;					/*	*/
-	long int pretime;
-	long int deltatime;
-	int visable = 1;
-	int renderInBackground = 0;
+	long int private_start;					/*	Timestamp start.	*/
+	long int pretime;						/*	Previous timestamp.	*/
+	long int deltatime;						/*	Delta timestamp.	*/
+	int visable = 1;						/*	View visibility.	*/
+	int renderInBackground = 0;				/*	whether being rendered in the background or not.	*/
 
 	/**/
-	struct timeval timeval;
+	struct timeval timeval;					/*	Timeout for the inotify.	*/
 
-	/*	*/
+
+	/*	Check if STDIN is piped.	*/
 	isPipe = isatty(STDIN_FILENO) == 0;
 	if(argc <= 1 && !isPipe){
 		fprintf(stderr, "No argument.\n");
 		return EXIT_FAILURE;
 	}
 
-	/**/
+
+	/*	Initialize glslview.	*/
 	if(glslview_init(argc, argv) != 0){
+		status = EXIT_FAILURE;
 		goto error;
 	}
 
 	drawable = SDL_GL_GetCurrentWindow();
+	if(drawable == NULL){
+		status = EXIT_FAILURE;
+		goto error;
+	}
 
 
 	/*	*/
@@ -613,6 +620,7 @@ int main(int argc, const char** argv){
 						glslview_resize_screen(&size.x, &shaders[x].uniform, &shaders[x], &fbackbuffertex);
 					}
 					break;
+				case SDL_WINDOWEVENT_MINIMIZED:
 				case SDL_WINDOWEVENT_HIDDEN:
 					visable = SDL_FALSE;
 					break;
@@ -627,7 +635,7 @@ int main(int argc, const char** argv){
 
 
 
-		ttime = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9);
+		elapse = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9);
 		deltatime = SDL_GetPerformanceCounter() - pretime;
 		pretime = SDL_GetPerformanceCounter();
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
@@ -643,7 +651,7 @@ int main(int argc, const char** argv){
 			}
 			else if(ret == 0){
 				if(visable || renderInBackground){
-					glslview_rendergraphic(drawable, shaders, ttime, deltatime);
+					glslview_rendergraphic(drawable, shaders, elapse, deltatime);
 				}
 			}else{
 				struct inotify_event ionevent;
@@ -697,7 +705,7 @@ int main(int argc, const char** argv){
 		else{
 
 			if(visable || renderInBackground){
-				glslview_rendergraphic(drawable, shaders, ttime, deltatime);
+				glslview_rendergraphic(drawable, shaders, elapse, deltatime);
 			}else{/*	render passes	*/
 				sleep(1);
 			}
