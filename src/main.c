@@ -24,7 +24,6 @@
 #include <GL/glext.h>
 #include <internal.h>
 #include <libgen.h>
-#include <regex.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -377,7 +376,6 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				inotifybuf = malloc(4096);
 			case 't':
 				if(optarg){
-					regex_t reg;
 					unsigned int width;
 					unsigned int height;
 					unsigned int bpp;
@@ -395,11 +393,6 @@ int glslview_readargument(int argc, const char** argv, int pass){
 					glslview_verbose_printf("FreeImage version : %s\n\n", FreeImage_GetVersion());
 
 					glslview_debug_printf("Attempt to load texture %s.\n", argv[optind + x -1]);
-
-					/*	TODO add support for regular expression for texture.	*/
-					regcomp(&reg, "*", 0);
-					regexec(&reg, argv[optind + x -1], 0, NULL, 0);
-					regfree(&reg);
 
 					while( ( format = FreeImage_GetFileType(argv[optind + x -1], 0) ) != FIF_UNKNOWN ){
 
