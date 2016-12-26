@@ -30,18 +30,37 @@ SDL_Window* glslview_init_opengl(void){
 	int glatt;
 	int x;
 
+	glslview_verbose_printf("Initialize OpenGL rendering interface.\n");
+
+	/*	*/
 	SDL_GetCurrentDisplayMode(0, &displaymode);
 	displaymode.w /= 2;
 	displaymode.h /= 2;
 	win = SDL_CreateWindow("", displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
+
+
 	if(win == NULL){
 		return NULL;
 	}
 
+	/*	*/
 	glc = SDL_GL_CreateContext(win);
-	SDL_GL_MakeCurrent(win, glc);
-	assert(glc);
+	if(glc == NULL){
+		fprintf(stderr, "Failed to create OpenGL context, %s.\n", SDL_GetError());
+		assert(glc);
+	}
+	if(SDL_GL_MakeCurrent(win, glc) < 0){
+		fprintf(stderr, "Failed to make current OpenGL context, %s.\n", SDL_GetError());
+		return NULL;
+	}
+
+	/*	*/
+	drawable = SDL_GL_GetCurrentWindow();
+	if(drawable == NULL){
+		fprintf(stderr, "Failed to current OpenGL Window, %s.\n", SDL_GetError());
+		return NULL;
+	}
 
 
 	/*	Display OpenGL information.	*/
@@ -56,8 +75,10 @@ SDL_Window* glslview_init_opengl(void){
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
+	glBlendFunc(GL_ONE, GL_ONE);
 	glDepthMask(GL_FALSE);
 	glDisable(GL_STENCIL_TEST);
+
 
 	/*	*/
 	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
@@ -109,52 +130,71 @@ SDL_Window* glslview_init_opengl(void){
 	return win;
 }
 
+void glslview_release_opengl(void){
 
+	int x;
+
+	glslview_verbose_printf("Releasing OpenGL resources.\n");
+
+	/*	Release OpenGL resources.	*/
+	if(glc != NULL){
+		for(x = 0; x < numShaderPass; x++){
+			if(glIsProgram(shaders[x].shader.program) == GL_TRUE){
+				glDeleteProgram(1, &shaders[x].shader.program);
+			}
+		}
+		if(glIsVertexArray(vao) == GL_TRUE){
+			glDeleteVertexArrays(1, &vao);
+		}
+		if(glIsBuffer(vbo) == GL_TRUE ){
+			glDeleteBuffers(1, &vbo);
+		}
+
+		/*	textures.	*/
+		for(x = 0; x < numTextures; x++){
+			if(glIsTexture(textures[x].texture) == GL_TRUE){
+				glDeleteTextures(1, &textures[x].texture);
+			}
+		}
+
+		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
+			glDeleteTextures(1, &fbackbuffertex.texture);
+		}
+
+		SDL_GL_DeleteContext(glc);
+	}
+}
+
+
+GLuint getTextureFormat(unsigned int texfor){
+
+
+	/*	*/
+	switch(texfor){
+	case TEXTURE_RGB:
+		return GL_RGB;
+	case TEXTURE_RGBA:
+		return GL_RGBA;
+	case TEXTURE_COMPRESSION_RGB:
+		return GL_COMPRESSED_RGB;
+	case TEXTURE_COMPRESSION_RGBA:
+		return GL_COMPRESSED_RGBA;
+	case TEXTURE_BGR:
+		return GL_BGR;
+	case TEXTURE_BGRA:
+		return GL_BGRA;
+	default:
+		return 0;
+	}
+}
 
 glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
 
-	if(!texture){
-		return NULL;
-	}
+	assert(texture);
 
 	/*	*/
-	switch(internalFormat){
-	case TEXTURE_RGB:
-		internalFormat = GL_RGB;
-		break;
-	case TEXTURE_RGBA:
-		internalFormat = GL_RGBA;
-		break;
-	case TEXTURE_COMPRESSION_RGB:
-		internalFormat = GL_COMPRESSED_RGB;
-		break;
-	case TEXTURE_COMPRESSION_RGBA:
-		internalFormat = GL_COMPRESSED_RGBA;
-		break;
-	case TEXTURE_BGR:
-		internalFormat = GL_BGR;
-		break;
-	case TEXTURE_BGRA:
-		internalFormat = GL_BGRA;
-		break;
-	}
-
-
-	/*	*/
-	switch(format){
-	case TEXTURE_RGB:
-		format = GL_RGB;
-		break;
-	case TEXTURE_RGBA:
-		format = GL_RGBA;
-		break;
-	case TEXTURE_BGR:
-		format = GL_BGR;
-		break;
-	case TEXTURE_BGRA:
-		format = GL_BGRA;
-		break;
-	}
+	internalFormat = getTextureFormat(internalFormat);
+	format = getTextureFormat(format);
 
 	texture->target = target;
 	texture->internalformat = internalFormat;
@@ -162,8 +202,6 @@ glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned i
 	texture->height = height;
 	texture->internalformat = format;
 	texture->type = type;
-
-
 
 
 
@@ -179,7 +217,7 @@ glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned i
 		break;
 	}
 
-
+	/*	*/
 	glTexParameteri(target, GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 	glTexParameteri(target, GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 	glTexParameteri(target, GL_TEXTURE_WRAP_S,GL_REPEAT);
@@ -189,37 +227,48 @@ glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned i
 
 	glGenerateMipmap(target);
 
+	glIsTexture(texture->texture);
 
 	return texture;
 }
 
 
 int compile_shader(const char** source, unsigned int type){
+
 	int shader;
 	int status;
 	int error;
+
+	/*	Check */
 	if(!source || !source[0]){
 		return -1;
 	}
-	if(!strlen(source[0])){
-		return -1;
-	}
 
+	/**/
 	shader = glCreateShader(type);
 	glShaderSource(shader, 1, source, NULL);
 	glCompileShader(shader);
 
-	//error = ExShaderCompileLog(shader, type);
+	/*	Check for error.	*/
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &status );
+	if( status == GL_FALSE){
+		char infolog[4096];
+		glGetShaderInfoLog(shader, sizeof(infolog), NULL, &infolog[0]);
+		fprintf(stderr, "%s\n", infolog);
+	}
 
 	return shader;
 }
 
 int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
+
 	int error = 1;
+	GLuint lstatus;
 
 	/**/
 	shader->program = glCreateProgram();
 
+	/*	*/
 	if(cvertexSource){
 		shader->ver = compile_shader(&cvertexSource, GL_VERTEX_SHADER);
 		glAttachShader(shader->program, shader->ver);
@@ -248,17 +297,23 @@ int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource,
 	/*	*/
 	glLinkProgram(shader->program);
 
+	/*	Check for error.	*/
+	glGetProgramiv(shader->program, GL_LINK_STATUS, &lstatus);
+	if(lstatus == GL_FALSE){
+		char infolog[4096];
+		glGetProgramInfoLog(shader->program, sizeof(infolog), NULL, &infolog[0] );
+		fprintf(stderr, "%s\n", infolog);
+	}
+
+
 #if defined(__gl_h_)
-	//error = ExshadererCompileLog(shader->program, GL_PROGRAM);
-	/*	if shaderer failed. clean up resources.	*/
 	if(!error){
 		glDeleteProgram(shader->program);
 	}
-
 #endif
 	glValidateProgram(shader->program);
 
-	/*	detach shaderer object and release their resources.	*/
+	/*	detach shader objects and release their resources.	*/
 	glDetachShader(shader->program, shader->ver);
 	glDetachShader(shader->program, shader->fra);
 	glDetachShader(shader->program, shader->geo);
