@@ -62,7 +62,7 @@ void glslview_default_init(void){
 
 
 int glslview_init(int argc, const char** argv){
-	int status = EXIT_SUCCESS;					/*	Return status of the function.	*/
+	int status = 1;					/*	Return status of the function.	*/
 	ssize_t srclen;								/*	*/
 
 	SDL_DisplayMode displaymode;				/*	*/
@@ -88,14 +88,14 @@ int glslview_init(int argc, const char** argv){
 	/*	Initialize SDL.	*/
 	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO) != 0){
 		fprintf(stderr, "Failed to initialize SDL, %s.\n", SDL_GetError());
-		status = EXIT_FAILURE;
+		status = 0;
 		return status;
 	}
 
 
 	/*	*/
 	if(glslview_readargument(argc, argv, 0) == 2){
-		return EXIT_SUCCESS;
+		return 0;
 	}
 	numShaderPass = numFragPaths;
 
@@ -111,7 +111,8 @@ int glslview_init(int argc, const char** argv){
 	/*	Create window. */
 	window = glslview_init_renderingapi();
 	if(window == NULL){
-		status = EXIT_FAILURE;
+		fprintf(stderr, "Failed to init rendering API.\n");
+		status = 0;
 		return status;
 	}
 
@@ -120,8 +121,9 @@ int glslview_init(int argc, const char** argv){
 	sprintf(title, "glslview %s", glslview_getVersion());
 	SDL_ShowWindow(window);
 	SDL_SetWindowTitle(window, title);
-	SDL_SetWindowPosition(window, displaymode.w / 2, displaymode.h / 2);
-	SDL_SetWindowSize(window, displaymode.w, displaymode.h );
+	SDL_GetCurrentDisplayMode(0, &displaymode);
+	SDL_SetWindowPosition(window, displaymode.w / 4, displaymode.h / 4);
+	SDL_SetWindowSize(window, displaymode.w / 2, displaymode.h  / 2 );
 
 
 
@@ -135,6 +137,11 @@ int glslview_init(int argc, const char** argv){
 
 	/*	Load shader fragment source code.	*/
 	glslview_verbose_printf("----------- fetching source code ----------\n");
+	if(numFragPaths < 1){
+		fprintf(stderr, "Requires at least one fragment argument.\n");
+		return 0;
+	}
+
 	shaders = malloc(sizeof(glslviewShaderCollection) * numFragPaths);
 	memset(shaders, 0, sizeof(glslviewShaderCollection) * numFragPaths);
 

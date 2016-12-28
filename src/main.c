@@ -142,10 +142,15 @@ int needsUpdate(glslviewShaderCollection* shader){
 }
 
 void glslview_catchSig(int signal){
+
+	SDL_Event event = { 0 };
+
 	switch(signal){
 	case SIGINT:
 	case SIGQUIT:
 		isAlive = SDL_FALSE;
+		event.type = SDL_QUIT;
+		SDL_PushEvent(&event);
 		break;
 	case SIGTERM:
 	case SIGABRT:
@@ -217,7 +222,7 @@ int main(int argc, const char** argv){
 
 
 	/*	Initialize glslview.	*/
-	if(glslview_init(argc, argv) != 0){
+	if(glslview_init(argc, argv) == 0){
 		status = EXIT_FAILURE;
 		goto error;
 	}
