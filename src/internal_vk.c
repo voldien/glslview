@@ -21,6 +21,9 @@ SDL_Window* glslview_init_vulkan(void){
 	VkPhysicalDevice* stackdevice;
 	VkApplicationInfo appInfo = {};
 
+
+	glslview_verbose_printf("Initialize Vulkan rendering interface.\n");
+
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pApplicationName = "glslview";
 	appInfo.applicationVersion = VK_MAKE_VERSION(	GLSLVIEW_MAJOR_VERSION,
@@ -119,6 +122,10 @@ SDL_Window* glslview_init_vulkan(void){
 
 
 	return window;
+}
+
+void glslview_release_vulkan(void){
+
 }
 
 void glslview_resize_screen_vk(int* res, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture){

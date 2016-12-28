@@ -38,6 +38,17 @@
 
 
 /**
+ *	Texture flags.
+ */
+#define TEXTURE_RGB 0x1
+#define TEXTURE_RGBA 0x2
+#define TEXTURE_COMPRESSION_RGB 0x3
+#define TEXTURE_COMPRESSION_RGBA 0x4
+#define TEXTURE_BGR 0x5
+#define TEXTURE_BGRA 0x6
+#define TEXTURE_UNSIGNED_BYTE 0x1
+
+/**
  *
  */
 typedef struct uniform_location_t{
@@ -136,6 +147,7 @@ typedef struct glslview_texture_collection_t{
 
 
 typedef SDL_Window* (*pglslview_init_renderingapi)(void);
+typedef void (*pglslview_release_vulkan)(void);
 typedef void (*pswapbufferfunctype)(SDL_Window* window);	/*	Function pointer data type.	*/
 typedef void (*presize_screen)(int* event, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
 typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
@@ -149,6 +161,7 @@ typedef void (*pglslview_rendergraphic)(SDL_Window* drawable, glslviewShaderColl
 
 /**/
 extern pglslview_init_renderingapi glslview_init_renderingapi;
+extern pglslview_release_vulkan glslview_release_renderingapi;
 extern presize_screen glslview_resize_screen;
 extern pupdate_shader_uniform glslview_update_shader_uniform;
 extern pdisplaygraphic glslview_displaygraphic;
@@ -195,6 +208,11 @@ extern void glslview_catchSig(int signal);
 extern int glslview_readargument(int argc, const char** argv, int pass);
 
 /**
+ *
+ */
+extern int needsUpdate(glslviewShaderCollection* shader);
+
+/**
  *	Load file.
  *
  *	@Return number of bytes loaded.
@@ -217,12 +235,22 @@ extern SDL_Window* glslview_init_vulkan(void);
 extern SDL_Window* glslview_init_opengl(void);
 
 /**
+ *	Release rendering API resource.
+ */
+extern void glslview_release_vulkan(void);
+extern void glslview_release_opengl(void);
+
+/**
  *	TODO add enum for texture target.
  *
  *	@Return
  */
-extern glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
-extern glslviewTexture* glslview_create_texture_vk(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
+extern glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level,
+		int internalFormat, int width, int height, int border, unsigned int format, unsigned int type,
+		const void *pixels);
+extern glslviewTexture* glslview_create_texture_vk(glslviewTexture* texture, unsigned int target, int level,
+		int internalFormat, int width, int height, int border, unsigned int format, unsigned int type,
+		const void *pixels);
 
 
 /**
@@ -230,8 +258,12 @@ extern glslviewTexture* glslview_create_texture_vk(glslviewTexture* texture, uns
  *
  *	@Return status.
  */
-extern int glslview_create_shader_gl(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
-extern int glslview_create_shader_vk(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
+extern int glslview_create_shader_gl(glslviewShader* texture, const char* cvertexSource,
+		const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source,
+		const char* ctess_e_source);
+extern int glslview_create_shader_vk(glslviewShader* texture, const char* cvertexSource,
+		const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source,
+		const char* ctess_e_source);
 
 /**
  *
@@ -292,15 +324,19 @@ extern int glslview_debug_printf(const char* format,...);
 
 
 
-/*	*/
+/*	Read only.	*/
 extern const float quad[4][3];					/*	Display quad.	*/
-extern unsigned int vao;						/*	Display vertex array object.	*/
-extern unsigned int vbo;						/*	Display vertex buffer object.	*/
 extern const char* vertex;						/*	Display vertex shader.	*/
 extern const char* vertexpolygone;
+
+extern unsigned int vao;						/*	Display vertex array object.	*/
+extern unsigned int vbo;						/*	Display vertex buffer object.	*/
+
+
 /*	*/
 extern SDL_GLContext glc;							/*	OpenGL Context.	*/
 extern SDL_Window* window;							/*	Window.	*/
+extern SDL_Window* drawable;
 extern int fullscreen;								/*	Set window fullscreen.	*/
 extern int verbose;									/*	enable verbose.	*/
 extern int debug;									/*	enable debugging.	*/
@@ -316,15 +352,15 @@ extern char* fragPath[32];							/*	Path of fragment shader.	*/
 
 extern glslviewShaderCollection* shaders;			/*	Shaders.	*/
 extern unsigned int fbo;							/*	*/
-extern unsigned int ftextype;
-extern unsigned int ftexinternalformat;
-extern unsigned int ftexformat;
+extern unsigned int ftextype;						/**/
+extern unsigned int ftexinternalformat;				/**/
+extern unsigned int ftexformat;						/**/
 extern glslviewTexture fbackbuffertex;				/*	framebuffer texture for backbuffer uniform variable.	*/
 extern glslviewTexture textures[8];					/*	*/
 extern glslviewTextureCollection* texturess;		/*	TODO replace textures variable.	*/
 extern const int numTextures;						/*	*/
 extern unsigned int nextTex;						/*	*/
-extern unsigned int isPipe;							/*	*/
+extern unsigned int isPipe;							/*	Is STDIN pipe used.	*/
 extern unsigned int use_stdin_as_buffer;			/*	*/
 extern int stdin_buffer_size;						/*	*/
 /*	polygone	*/
