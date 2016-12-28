@@ -169,8 +169,15 @@ void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh){
 
 	vertex = (float*)glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
 	error = glGetError();
+	if(vertex == NULL){
+		fprintf(stderr, "Failed map OpenGL ArrayBuffer to memory, %d.\n", error);
+	}
 	indices = (unsigned int*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_WRITE_ONLY);
 	error = glGetError();
+	if( indices == NULL){
+		fprintf(stderr, "Failed map OpenGL ArrayBuffer to memory, %d.\n", error);
+	}
+
 
 	/*	Check if pointer is not NULL.	*/
 	assert(vertex);

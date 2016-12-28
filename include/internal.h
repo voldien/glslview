@@ -201,7 +201,10 @@ extern int glslview_readargument(int argc, const char** argv, int pass);
  */
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
-
+/**
+ *	Load polygone. TODO resolve with the rendering API later.
+ */
+extern void loadpolygone(const char* cfilename, struct mesh_object_t* pmesh);
 
 
 /**
