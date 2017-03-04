@@ -314,7 +314,7 @@ int main(int argc, const char** argv){
 
 
 
-		elapse = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9);
+		elapse = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9F);
 		deltatime = SDL_GetPerformanceCounter() - pretime;
 		pretime = SDL_GetPerformanceCounter();
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/

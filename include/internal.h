@@ -122,7 +122,9 @@ typedef struct glslview_texture_collection_t{
 
 
 
-
+/**
+ *	Function data types.
+ */
 typedef SDL_Window* (*pglslview_init_renderingapi)(void);
 typedef void (*pglslview_release_vulkan)(void);
 typedef void (*pswapbufferfunctype)(SDL_Window* window);	/*	Function pointer data type.	*/
@@ -158,7 +160,7 @@ extern pglslview_rendergraphic glslview_rendergraphic;
 extern void glslview_default_init(void);
 
 /**
- *	Initialize glslsview.
+ *	Initialize glslsview program.
  *
  *	@Return
  *
