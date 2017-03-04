@@ -203,7 +203,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			{"fullscreen", 		no_argument, 		NULL, 'F'},				/*	use in fullscreen.	*/
 			{"notify-file", 	no_argument, 		NULL, 'n'},				/*	enable inotify notification.	*/
 			{"srgb",			no_argument, 		NULL, 'S'},				/*	sRGB.	*/
-			{"Verbose", 		no_argument, 		NULL, 'V'},				/*	Verbose.	*/
+			{"verbose", 		no_argument, 		NULL, 'V'},				/*	Verbose.	*/
 			{"no-decoration", 	no_argument,	 	NULL, 'D'},				/*	Use no window decoration.	*/
 			{"wallpaper", 		optional_argument, 	NULL, 'w'},				/*	use as wallpaper.	*/
 			{"vsync", 			optional_argument, 	NULL, 's'},				/*	enable vsync.	*/
