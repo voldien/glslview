@@ -2,19 +2,19 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0)
 PROJECT(glslview)
 
 
-execute_process(COMMAND git describe
+EXECUTE_PROCESS(COMMAND git describe
 		COMMAND sed -e "s/[^0-9]*//g"
 		COMMAND cut -c1-1
 	    OUTPUT_VARIABLE _major_version OUTPUT_STRIP_TRAILING_WHITESPACE
 	    RESULT_VARIABLE _major_version_failed)
 
-execute_process(COMMAND git describe
+EXECUTE_PROCESS(COMMAND git describe
 		COMMAND sed -e "s/[^0-9].[^0-9]*//g"
 		COMMAND cut -c1-1
 	    OUTPUT_VARIABLE _minor_version OUTPUT_STRIP_TRAILING_WHITESPACE
 	    RESULT_VARIABLE _minor_version_failed)
 
-execute_process(COMMAND git describe
+EXECUTE_PROCESS(COMMAND git describe
 		COMMAND sed -e "s/[^0-9].[^0-9].[^0-9]*//g"
 		COMMAND cut -c1-1
 	    OUTPUT_VARIABLE _revision_version OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -24,8 +24,9 @@ execute_process(COMMAND git describe
 ADD_DEFINITIONS(-DGLSLVIEW_MAJOR_VERSION=${_major_version} )
 ADD_DEFINITIONS( -DGLSLVIEW_MINOR_VERSION=${_minor_version} )
 ADD_DEFINITIONS(-DGLSLVIEW_REVISION_VERSION=${_revision_version} )
+SET( VERSION "${_major_version}.${_minor_version}.${_revision_version}")
 
-#	GCC Compiler.
+#	GCC compiler flag options.
 if((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_IS_MINGW)
 
 	ADD_DEFINITIONS( -Wall -w -fpermissive   -Wfatal-errors )
@@ -45,25 +46,37 @@ if((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX) AND NOT CMAKE_COMPILER_
 endif()
 INCLUDE_DIRECTORIES(./include)
 
+# Include OpenGL 
 INCLUDE(FindOpenGL)
 IF(OPENGL_FOUND)
 
 ENDIF()
 
-
+# Source of the program.
 FILE(GLOB core ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c )
+
+# Add
 ADD_EXECUTABLE(glslview ${core} )
+TARGET_LINK_LIBRARIES(glslview -lSDL2 ${OPENGL_LIBRARIES} -lfreeimage -lvulkan )
 
-TARGET_LINK_LIBRARIES(glslview -lSDL2 ${OPENGL_LIBRARIES} -lfreeimage -lvulkan)
 
+# Install program to executable binary directory.
 INSTALL(TARGETS glslview DESTINATION bin)
 IF( UNIX )
 	EXECUTE_PROCESS(OUTPUT_FILE glslview.1.gz
 			COMMAND gzip -ck glslview.1)
 	INSTALL(FILES glslview.1.gz DESTINATION /usr/share/man/man1/)
 	EXECUTE_PROCESS(COMMAND mandb)
+
+	
+	SET( TARGETDIR "${PROJECT_NAME}-${VERSION}")
+	ADD_CUSTOM_TARGET(	distribution
+				COMMAND mkdir -p ${TARGETDIR}
+				COMMAND cp -r src include example Makefile README.md *.1 ${TARGETDIR}
+				COMMAND tar cf - ${TARGETDIR} | gzip -c > ${TARGETDIR}.tar.gz 
+				COMMAND rm -r ${TARGETDIR} )
+
 ENDIF()
-#INSTALL(TARGETS glslview.1 DESTINATION man)
 
 
 
