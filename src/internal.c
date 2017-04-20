@@ -44,7 +44,6 @@
 
 
 
-
 void glslview_default_init(void){
 	glslview_init_renderingapi = glslview_init_opengl;
 	glslview_release_renderingapi = glslview_release_opengl;
@@ -60,16 +59,16 @@ void glslview_default_init(void){
 }
 
 
-
 int glslview_init(int argc, const char** argv){
-	int status = 1;					/*	Return status of the function.	*/
-	ssize_t srclen;								/*	*/
 
-	SDL_DisplayMode displaymode;				/*	*/
-	SDL_version sdlver;							/*	*/
-	char title[512];							/*	*/
-	char* fragData = NULL;						/*	*/
-	int x;										/*	Iterator.	*/
+	int status = 1;							/*	Return status of the function.	*/
+	ssize_t srclen;							/*	*/
+
+	SDL_DisplayMode displaymode;			/*	*/
+	SDL_version sdlver;						/*	*/
+	char title[512];						/*	*/
+	char* fragData = NULL;					/*	*/
+	int x;									/*	Iterator.	*/
 
 
 	/*	Initialize default values that has to been set
@@ -105,7 +104,6 @@ int glslview_init(int argc, const char** argv){
 	signal(SIGINT, glslview_catchSig);
 	signal(SIGABRT, glslview_catchSig);
 	signal(SIGPIPE, glslview_catchSig);
-
 
 
 	/*	Create window. */
@@ -219,7 +217,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			{"texture",			required_argument, 	NULL, 't'},				/*	Texture.	*/
 			{"poly",			required_argument, 	NULL, 'p'},				/*	Polygon.	*/
 			{"opencl",			required_argument, 	NULL, 'c'},				/*	Opencl.	*/
-
+			{"param",			required_argument,	NULL, 'P'},
 			{NULL, 0, NULL, 0}
 	};
 
@@ -227,7 +225,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 	int c;
 	int index;
 	int status = 1;
-	const char* shortopts = "dDIsar:g:Vf:SA:t:vFnCp:w";
+	const char* shortopts = "dDIsar:g:Vf:SA:t:vFnCp:wP:";
 
 
 	/*	First argument pass.	*/
