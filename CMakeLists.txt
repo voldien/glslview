@@ -63,17 +63,12 @@ TARGET_LINK_LIBRARIES(glslview -lSDL2 ${OPENGL_LIBRARIES} -lfreeimage -lvulkan )
 # Install program to executable binary directory.
 INSTALL(TARGETS glslview DESTINATION bin)
 IF( UNIX )
-	EXECUTE_PROCESS(OUTPUT_FILE glslview.1.gz
-			COMMAND gzip -ck glslview.1)
-	INSTALL(FILES glslview.1.gz DESTINATION /usr/share/man/man1/)
-	EXECUTE_PROCESS(COMMAND mandb)
-
 	
 	SET( TARGETDIR "${PROJECT_NAME}-${VERSION}")
 	ADD_CUSTOM_TARGET(	distribution
 				COMMAND mkdir -p ${TARGETDIR}
 				COMMAND cp -r src include example CMakeLists.txt README.md *.1 ${TARGETDIR}
-				COMMAND tar cf - ${TARGETDIR} | gzip -c > ${TARGETDIR}.tar.gz 
+				COMMAND tar cf - ${TARGETDIR} | gzip -c > ${TARGETDIR}.tar.gz
 				COMMAND rm -r ${TARGETDIR} )
 
 ENDIF()
