@@ -41,15 +41,6 @@
 #include <unistd.h>
 
 
-/*	for version 2.0, 3D objects with hpm for high performance matrices operators.
- *	and assimp for extracting geometrices;
- */
-//#include<hpm/hpm.h>
-//#include<assimp/cimport.h>
-
-
-
-
 #define EVENT_SIZE  ( sizeof (struct inotify_event) )
 #define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
@@ -189,6 +180,7 @@ void glslview_terminate(void){
 
 
 int main(int argc, const char** argv){
+
 	int status = EXIT_SUCCESS;				/*	Exit status.	*/
 	SDL_Event event = {0};					/*	*/
 	float elapse;							/*	Time elapse since start in seconds.	*/
@@ -196,7 +188,6 @@ int main(int argc, const char** argv){
 	char* fragData = NULL;					/*	*/
 	int x;									/*	iterator.	*/
 	float mouse[2];							/*	*/
-
 
 	/**/
 	long int private_start;					/*	Timestamp start.	*/
@@ -208,7 +199,6 @@ int main(int argc, const char** argv){
 	unsigned int needmouseupdate = 0;		/*	If mouse input is enabled.	*/
 	int eventtimeout = INT32_MAX;			/*	*/
 
-
 	/**/
 	struct timeval timeval ={ 0, 1000 };			/*	Timeout for the inotify.	*/
 
@@ -216,17 +206,15 @@ int main(int argc, const char** argv){
 	/*	Check if STDIN is piped.	*/
 	isPipe = isatty(STDIN_FILENO) == 0;
 	if(argc <= 1 && !isPipe){
-		fprintf(stderr, "No argument.\n");
+		fprintf(stderr, "No arguments.\n");
 		return EXIT_FAILURE;
 	}
-
 
 	/*	Initialize glslview.	*/
 	if(glslview_init(argc, argv) == 0){
 		status = EXIT_FAILURE;
 		goto error;
 	}
-
 
 	/*	*/
 	private_start = SDL_GetPerformanceCounter();
@@ -238,7 +226,6 @@ int main(int argc, const char** argv){
 		timeval.tv_usec = 0;
 	}
 
-
 	/*	TODO improve later, because mouse input and other has to be taking into consideration.*/
 	if(needsUpdate(shaders) ){
 		eventtimeout = 0;
@@ -247,7 +234,6 @@ int main(int argc, const char** argv){
 
 	/*	*/
 	while(isAlive){
-
 
 		/*	*/
 		while(SDL_WaitEventTimeout(&event, eventtimeout)){
@@ -313,10 +299,11 @@ int main(int argc, const char** argv){
 		}
 
 
-
+		/*	time.	*/
 		elapse = (float)(( SDL_GetPerformanceCounter() - private_start) / 1E9F);
 		deltatime = SDL_GetPerformanceCounter() - pretime;
 		pretime = SDL_GetPerformanceCounter();
+
 		/*	TODO fix such that its not needed to redefine some code twice for the rendering code section.	*/
 		if(ifd != -1){
 			fd_set readfd;
