@@ -36,14 +36,16 @@ extern void glslview_set_verbosity_level(unsigned int verbosity);
 extern unsigned int glslview_get_verbosity_level(void);
 
 /**
- *	Print log level.
+ *	Print formated log level.
+ *
+ *	@Return
  */
 extern int glslview_log_printf(unsigned int verbosity, const char* fmt,...);
 
 
 #define glslview_verbose_printf(fmt, args...)	\
 		glslview_log_printf(GLSLVIEW_VERBOSE, fmt, ##args)
-#define glslview_debug_printf(format,args...)	\
+#define glslview_debug_printf(fmt, args...)	\
 		glslview_log_printf(GLSLVIEW_DEBUG, fmt, ##args)
 
 
