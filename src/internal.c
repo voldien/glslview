@@ -559,12 +559,13 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				exit(EXIT_SUCCESS);
 			}
 			case 'V':
-				verbose = SDL_TRUE;
+				glslview_set_verbosity_level(GLSLVIEW_VERBOSE);
 				glslview_verbose_printf("Enable verbose.\n");
 				break;
 			case 'd':{	/*	enable debug.	*/
-			    debug = SDL_TRUE;
+			    g_debug = SDL_TRUE;
 			    int glatt;
+				glslview_set_verbosity_level(GLSLVIEW_DEBUG);
 			    SDL_GL_GetAttribute(SDL_GL_CONTEXT_FLAGS, &glatt);
 			    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, glatt | SDL_GL_CONTEXT_DEBUG_FLAG);
 			}break;
@@ -905,36 +906,4 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
 	fclose(f);
 	*bufferptr = buffer;
 	return length;
-}
-
-
-int glslview_verbose_printf(const char* format,...){
-	va_list larg;
-	int status;
-
-	if(verbose == 0){
-		return 0;
-	}
-
-	va_start(larg, format);
-	status = vprintf(format, larg);
-	va_end(larg);
-
-	return status;
-}
-
-int glslview_debug_printf(const char* format,...){
-	va_list larg;
-	int status;
-
-	if(debug == 0){
-		return 0;
-	}
-
-	va_start(larg, format);
-	status = vprintf(format, larg);
-	va_end(larg);
-
-
-	return status;
 }

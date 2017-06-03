@@ -19,6 +19,7 @@
 #ifndef _INTERNAL_H_
 #define _INTERNAL_H_ 1
 #include"def.h"
+#include"glslview_log.h"
 #include<SDL2/SDL.h>
 #include<assert.h>
 
@@ -191,28 +192,6 @@ extern int needsUpdate(glslviewShaderCollection* shader);
  *	@Return number of bytes loaded.
  */
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
-
-
-
-
-
-/**
- *	Print verbose.
- *	The function will print depending on if the
- *	verbose variable is true or not.
- *
- *	@Return
- */
-extern int glslview_verbose_printf(const char* format,...);
-
-/**
- *	Print debug.
- *
- *	@Return
- */
-extern int glslview_debug_printf(const char* format,...);
-
-
 
 
 
