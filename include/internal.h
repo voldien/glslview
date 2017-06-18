@@ -65,15 +65,21 @@ typedef struct uniform_location_t{
 	int tex15;			/*	texture 15.	*/
 }UniformLocation;
 
+/**
+ *
+ */
 typedef struct glslview_texture_t{
-	unsigned int target;			/**/
-	unsigned int texture;			/**/
-	unsigned int width;				/**/
-	unsigned int height;			/**/
-	unsigned int internalformat;	/**/
-	unsigned int type;				/**/
+	unsigned int target;			/*	Texture target.	*/
+	unsigned int texture;			/*	Texture unique identifier.	*/
+	unsigned int width;				/*	Texture width in pixels.	*/
+	unsigned int height;			/*	Texture height in pixels.	*/
+	unsigned int internalformat;	/*	Internal format enumerator.	*/
+	unsigned int type;				/*	Internal storage type enumerator.	*/
 }glslviewTexture;
 
+/**
+ *
+ */
 typedef struct glslview_shader_t{
 	unsigned int ver;		/*	vertex shader.	*/
 	unsigned int fra;		/*	fragment shader.	*/
@@ -81,17 +87,22 @@ typedef struct glslview_shader_t{
 	unsigned int tesc;		/*	tessellation control shader.	*/
 	unsigned int tese;		/*	tessellation evaluation shader.	*/
 	unsigned int program;	/*	shader program.	*/
-	unsigned int flag;		/**/
+	unsigned int flag;		/*	Shader flag.	*/
 }glslviewShader;
 
-
+/**
+ *
+ */
 typedef struct glslview_shader_collection_t{
-	UniformLocation uniform;
-	glslviewShader shader;
+	UniformLocation uniform;	/*	Uniform of shader.	*/
+	glslviewShader shader;		/*	Shader.	*/
 }glslviewShaderCollection;
 
+/**
+ *
+ */
 typedef struct glslview_texture_collection_t{
-	glslviewTexture texture;
+	glslviewTexture texture;	/*	Texture.	*/
 }glslviewTextureCollection;
 
 
@@ -127,7 +138,9 @@ typedef int (*pglslview_create_shader)(glslviewShader* texture, const char* cver
 typedef void (*pglslview_rendergraphic)(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
 
 
-/**/
+/**
+ *
+ */
 extern pglslview_init_renderingapi glslview_init_renderingapi;
 extern pglslview_release_vulkan glslview_release_renderingapi;
 extern presize_screen glslview_resize_screen;
@@ -187,51 +200,18 @@ extern int glslview_readargument(int argc, const char** argv, int pass);
 extern int needsUpdate(glslviewShaderCollection* shader);
 
 /**
- *	Load file.
+ *	Load file from filepath.
  *
- *	@Return number of bytes loaded.
+ *	@Return if sucesfully the number of bytes loaded, -1 otherwise.
  */
 extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
 
-
-
-/*	Read only.	*/
-extern const float quad[4][3];					/*	Display quad.	*/
-extern const char* vertex;						/*	Display vertex shader.	*/
-
-extern unsigned int vao;						/*	Display vertex array object.	*/
-extern unsigned int vbo;						/*	Display vertex buffer object.	*/
-
-/*	*/
-extern SDL_GLContext glc;							/*	OpenGL Context.	*/
-extern SDL_Window* window;							/*	Window.	*/
-extern SDL_Window* drawable;
-extern int fullscreen;								/*	Set window fullscreen.	*/
-extern int verbose;									/*	enable verbose.	*/
-extern int debug;									/*	enable debugging.	*/
-extern int compression;								/*	Use compression.	*/
-extern unsigned int rendererapi;					/*	Rendering API.	*/
-extern unsigned int isAlive;						/*	*/
-extern int ifd;										/*	inotify file descriptor.*/
-extern int wd;										/*	inotify watch directory.	*/
-extern char* inotifybuf;							/*	*/
-extern unsigned int numFragPaths;					/*	*/
-extern unsigned int numShaderPass;					/*	*/
-extern char* fragPath[32];							/*	Path of fragment shader.	*/
-
-extern glslviewShaderCollection* shaders;			/*	Shaders.	*/
-extern unsigned int fbo;							/*	*/
-extern unsigned int ftextype;						/**/
-extern unsigned int ftexinternalformat;				/**/
-extern unsigned int ftexformat;						/**/
-extern glslviewTexture fbackbuffertex;				/*	framebuffer texture for backbuffer uniform variable.	*/
-extern glslviewTexture textures[8];					/*	*/
-extern glslviewTextureCollection* texturess;		/*	TODO replace textures variable.	*/
-extern const int numTextures;						/*	*/
-extern unsigned int nextTex;						/*	*/
-extern unsigned int isPipe;							/*	Is STDIN pipe used.	*/
-extern unsigned int use_stdin_as_buffer;			/*	*/
-extern int stdin_buffer_size;						/*	*/
+/**
+ *	Load string from filepath.
+ *
+ *	@Return if sucesfully the number of bytes loaded, -1 otherwise.
+ */
+extern long int glslview_loadString(const char* cfilename, void** bufferptr);
 
 
 #endif
