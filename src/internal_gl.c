@@ -17,7 +17,7 @@
 
 */
 
-#include"internal.h"
+#include"glslview.h"
 #include<stdio.h>
 #include<unistd.h>
 #include<GL/gl.h>
@@ -225,28 +225,28 @@ glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned i
 	glTexParameteri(target, GL_TEXTURE_WRAP_R,GL_REPEAT);
 	glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, 5);
 
+	/*	*/
 	glGenerateMipmap(target);
 
+	/*	*/
 	glIsTexture(texture->texture);
 
 	return texture;
 }
 
 
-int compile_shader(const char** source, unsigned int type){
+int compile_shader(const char** source, unsigned int num, unsigned int type){
 
 	int shader;
 	int status;
 	int error;
 
-	/*	Check */
-	if(!source || !source[0]){
-		return -1;
-	}
+	/*	*/
+	assert(source || *source);
 
-	/**/
+	/*	Compile shaders.	*/
 	shader = glCreateShader(type);
-	glShaderSource(shader, 1, source, NULL);
+	glShaderSource(shader, num, source, NULL);
 	glCompileShader(shader);
 
 	/*	Check for error.	*/
@@ -260,21 +260,54 @@ int compile_shader(const char** source, unsigned int type){
 	return shader;
 }
 
+static unsigned int glslview_get_GLSL_version(void){
+
+	unsigned int version;
+	char glstring[128] = {0};
+	char* wspac;
+
+	/*	Extract version number.	*/
+	strcpy(glstring, (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
+	wspac = strstr(glstring, " ");
+	if(wspac){
+		*wspac = '\0';
+	}
+	version = strtof(glstring, NULL) * 100;
+
+	return version;
+}
+
 int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
 
 	int error = 1;
 	GLuint lstatus;
+	char glversion[64];
+	char** vsources[2] = {""};
+	char** fsources[2] = {""};
+
+	/**/
+	sprintf(glversion, "#version %d\n", glslview_get_GLSL_version());
+
+	/*	Assign version header unless explicity defined.	*/
+	if(strstr(cvertexSource, "#version") == NULL)
+		vsources[0] = &glversion[0];
+	if(strstr(cfragmentSource, "#version") == NULL)
+		fsources[0] = &glversion[0];
+
+
+	vsources[1] = (char*)cvertexSource;
+	fsources[1] = (char*)cfragmentSource;
 
 	/**/
 	shader->program = glCreateProgram();
 
 	/*	*/
 	if(cvertexSource){
-		shader->ver = compile_shader(&cvertexSource, GL_VERTEX_SHADER);
+		shader->ver = compile_shader(vsources, 2, GL_VERTEX_SHADER);
 		glAttachShader(shader->program, shader->ver);
 	}
 	if(cfragmentSource){
-		shader->fra = compile_shader(&cfragmentSource, GL_FRAGMENT_SHADER);
+		shader->fra = compile_shader(fsources, 2, GL_FRAGMENT_SHADER);
 		glAttachShader(shader->program, shader->fra);
 	}
 	/*
@@ -294,7 +327,7 @@ int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource,
 #endif
 	*/
 
-	/*	*/
+	/*	Link togheter shader program.	*/
 	glLinkProgram(shader->program);
 
 	/*	Check for error.	*/
@@ -313,7 +346,7 @@ int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource,
 #endif
 	glValidateProgram(shader->program);
 
-	/*	detach shader objects and release their resources.	*/
+	/*	Setach shader objects and release their resources.	*/
 	glDetachShader(shader->program, shader->ver);
 	glDetachShader(shader->program, shader->fra);
 	glDetachShader(shader->program, shader->geo);
