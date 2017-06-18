@@ -16,24 +16,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-#include"internal.h"
+#include"glslview.h"
 #include"rendering.h"
 #include<SDL2/SDL.h>
 #include<GL/gl.h>
 #include<FreeImage.h>
 /*	TODO remove glsl function later.	*/
-
 #include<getopt.h>
 #include<string.h>
 #include<errno.h>
 #include<unistd.h>
 #include<signal.h>
-
 #include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
 
 /*	Default vertex shader.	*/
 const char* vertex = ""
-"#version 330 core\n"
+//"#version 330 core\n"
 "layout(location = 0) in vec3 vertex;\n"
 "void main(void){\n"
 "gl_Position = vec4(vertex,1.0);\n"
