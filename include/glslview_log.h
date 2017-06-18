@@ -20,10 +20,12 @@
 #define _GLSLVIEW_LOG_H_ 1
 #include"def.h"
 
-
-#define GLSLVIEW_QUITE		0x0
-#define GLSLVIEW_VERBOSE	0x1
-#define GLSLVIEW_DEBUG		0x3
+/**
+ *	Logging level.
+ */
+#define GLSLVIEW_QUITE		0x0		/*	Quite. Opresses all glslview_log_printf call.	*/
+#define GLSLVIEW_VERBOSE	0x1		/*	Verbose, print only verbose.	*/
+#define GLSLVIEW_DEBUG		0x3		/*	Debu, prints all.	*/
 
 /**
  *	Set verbosity level.
@@ -38,13 +40,18 @@ extern unsigned int glslview_get_verbosity_level(void);
 /**
  *	Print formated log level.
  *
- *	@Return
+ *	@Return number of bytes written.
  */
 extern int glslview_log_printf(unsigned int verbosity, const char* fmt,...);
 
-
+/**
+ *	Verbose printf.
+ */
 #define glslview_verbose_printf(fmt, args...)	\
 		glslview_log_printf(GLSLVIEW_VERBOSE, fmt, ##args)
+/**
+ *	Debug printf.
+ */
 #define glslview_debug_printf(fmt, args...)	\
 		glslview_log_printf(GLSLVIEW_DEBUG, fmt, ##args)
 
