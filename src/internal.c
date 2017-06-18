@@ -510,7 +510,7 @@ int glslview_display(void){
 const char* glslview_getVersion(void){
 	return COMPILED_VERSION(GLSLVIEW_MAJOR_VERSION,
 			GLSLVIEW_MINOR_VERSION,
-			GLSLVIEW_REVISION_VERSION);
+			GLSLVIEW_REVISION_VERSION, GLSLVIEW_STATE_VERSION);
 }
 
 

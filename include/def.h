@@ -11,23 +11,12 @@
 #else           /*	ASCII / UTF-8	*/
     #define GLSLVIEW_TEXT(quote) quote
 #endif
+
+/**
+ *	Macro string.
+ */
 #define GLSLVIEW_STR_HELPER(x) #x
 #define GLSLVIEW_STR(x) GLSLVIEW_STR_HELPER(x)
-#define COMPILED_VERSION(major, minor, revision) GLSLVIEW_STR(major)GLSLVIEW_TEXT(".")GLSLVIEW_STR(minor)GLSLVIEW_TEXT(".")GLSLVIEW_STR(revision)
-
-
-
-
-/*	Default value.	*/
-#ifndef GLSLVIEW_MAJOR_VERSION
-	#define GLSLVIEW_MAJOR_VERSION	0
-#endif	/*	GLSLVIEW_MAJOR_VERSION	*/
-#ifndef GLSLVIEW_MINOR_VERSION
-	#define GLSLVIEW_MINOR_VERSION	5
-#endif	/*	GLSLVIEW_MINOR_VERSION	*/
-#ifndef GLSLVIEW_REVISION_VERSION
-	#define GLSLVIEW_REVISION_VERSION 0
-#endif	/*	GLSLVIEW_REVISION_VERSION	*/
-
+#define COMPILED_VERSION(major, minor, revision, state) GLSLVIEW_STR(major)GLSLVIEW_TEXT(".")GLSLVIEW_STR(minor)GLSLVIEW_STR(state)GLSLVIEW_STR(revision)
 
 #endif
