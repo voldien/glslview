@@ -24,12 +24,13 @@
 #include<GL/glext.h>
 #include<SDL2/SDL.h>
 
-SDL_Window* glslview_init_opengl(void){
+SDL_Window* glslview_gl_init(void){
 	SDL_Window* win;
 	SDL_DisplayMode displaymode;
 	int glatt;
 	int x;
 
+	/*	*/
 	glslview_verbose_printf("Initialize OpenGL rendering interface.\n");
 
 	/*	*/
@@ -107,8 +108,8 @@ SDL_Window* glslview_init_opengl(void){
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 12, (const void*)0);
 
-	/**/
-	glslview_set_viewport_gl(displaymode.w, displaymode.h);
+	/*	*/
+	glslview_gl_set_viewport(displaymode.w, displaymode.h);
 
 	/*	*/
 	if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
@@ -126,21 +127,22 @@ SDL_Window* glslview_init_opengl(void){
 	}
 
 
-
 	return win;
 }
 
-void glslview_release_opengl(void){
+void glslview_gl_release(void){
 
 	int x;
 
 	glslview_verbose_printf("Releasing OpenGL resources.\n");
 
 	/*	Release OpenGL resources.	*/
-	if(glc != NULL){
+	if(g_glc != NULL){
+
+		/*	Release each shader program.	*/
 		for(x = 0; x < numShaderPass; x++){
-			if(glIsProgram(shaders[x].shader.program) == GL_TRUE){
-				glDeleteProgram(1, &shaders[x].shader.program);
+			if(glIsProgram(g_shaders[x].shader.program) == GL_TRUE){
+				glDeleteProgram(1, &g_shaders[x].shader.program);
 			}
 		}
 		if(glIsVertexArray(vao) == GL_TRUE){
@@ -188,7 +190,7 @@ GLuint getTextureFormat(unsigned int texfor){
 	}
 }
 
-glslviewTexture* glslview_create_texture_gl(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
+glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
 
 	assert(texture);
 
@@ -277,7 +279,7 @@ static unsigned int glslview_get_GLSL_version(void){
 	return version;
 }
 
-int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
+int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
 
 	int error = 1;
 	GLuint lstatus;
@@ -362,24 +364,23 @@ int glslview_create_shader_gl(glslviewShader* shader, const char* cvertexSource,
 }
 
 
-void glslview_resize_screen_gl(int* res, UniformLocation* uniform, glslviewShader* shader, glslviewTexture* ftexture){
+void glslview_gl_resize_screen(int* res, UniformLocation* uniform, glslviewShader* shader, glslviewTexture* ftexture){
 
 	float resolution[2] = {res[0], res[1]};
 	glUniform2fv(uniform->resolution, 1, &resolution[0]);
 	glslview_verbose_printf("%dx%d.\n", res[0], res[1]);
 	/**/
 
-
 	if(ftexture){
 		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
 			glDeleteTextures(1, &fbackbuffertex.texture);
-			glslview_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, ftexinternalformat, res[0], res[1], 0, ftexformat, ftextype, NULL);
+			glslview_gl_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, g_ftexinternalformat, res[0], res[1], 0, g_ftexformat, g_ftextype, NULL);
 		}
 	}
 }
 
 
-void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height){
+void glslview_gl_update_shader_uniform(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height){
 	float res[2];
 
 	glslview_verbose_printf("----------- fetching uniforms index location ----------\n");
@@ -463,7 +464,7 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
 			glDeleteTextures(1, &fbackbuffertex.texture);
 		}
-		glslview_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, ftexinternalformat, width, height, 0, ftexformat, ftextype, NULL);
+		glslview_gl_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, g_ftexinternalformat, width, height, 0, g_ftexformat, g_ftextype, NULL);
 		glslview_verbose_printf("Created backbuffer.	\n");
 	}else{
 		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
@@ -472,19 +473,19 @@ void glslview_update_shader_uniform_gl(struct uniform_location_t* uniform, glslv
 	}
 }
 
-void glslview_displaygraphic_gl(SDL_Window* drawable){
+void glslview_gl_displaygraphic(SDL_Window* drawable){
 	/*	draw quad.	*/
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
 
 	/**/
-	glslview_swapbuffer(drawable);
+	SDL_GL_SwapWindow(drawable);
 }
 
 
 
 
 
-void glslview_update_uniforms_gl(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime){
+void glslview_gl_update_uniforms(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime){
 
 	if(uniform->time != -1){
 		glUniform1fv(uniform->time, 1, &ttime);
@@ -503,22 +504,22 @@ void glslview_update_uniforms_gl(UniformLocation* uniform, glslviewShader* shade
 
 }
 
-void glslview_set_viewport_gl(unsigned int width, unsigned int height){
+void glslview_gl_set_viewport(unsigned int width, unsigned int height){
 	glViewport(0, 0, width, height);
 }
 
 
 
 
-void glslview_rendergraphic_gl(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
+void glslview_gl_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
 	int x;
 
 	for(x = 0; x < numShaderPass; x++){
 
 		glUseProgram(shaders[x].shader.program);
 
-		glslview_update_uniforms(&shaders[x].uniform, &shaders[x].shader, ttime, deltatime);
-		glslview_displaygraphic(drawable);
+		glslview_gl_update_uniforms(&shaders[x].uniform, &shaders[x].shader, ttime, deltatime);
+		glslview_gl_displaygraphic(drawable);
 
 		if(shaders[x].uniform.backbuffer != -1){
 			glActiveTexture(GL_TEXTURE0 + numTextures);
