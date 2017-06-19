@@ -167,19 +167,13 @@ extern void glslview_default_init(void);
  *	@Return
  *
  */
-extern int glslview_init(int argc, const char** argv);
+extern void glslview_terminate(void);
 
 /**
  *
  */
 extern int glslview_display(void);
 
-/**
- *	Get glslview version.
- *
- *	@Return non NULL string.
- */
-extern const char* glslview_getVersion(void);
 
 /**
  *	Signal catch function.
@@ -187,12 +181,7 @@ extern const char* glslview_getVersion(void);
 extern void glslview_catchSig(int signal);
 
 
-/**
- *	Read user input argument.
- *
- *	@Return status.
- */
-extern int glslview_readargument(int argc, const char** argv, int pass);
+
 
 /**
  *
