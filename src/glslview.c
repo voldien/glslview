@@ -2,19 +2,13 @@
 #include<signal.h>
 #include<unistd.h>
 #include<getopt.h>
+#include<errno.h>
 #include<GL/gl.h>
 #include<SDL2/SDL.h>
 #include<GL/gl.h>
 #include<FreeImage.h>
 /*	TODO remove glsl function later.	*/
-#include<getopt.h>
-#include<string.h>
-#include<errno.h>
-#include<unistd.h>
-#include<signal.h>
 #include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
-
-
 
 
 
