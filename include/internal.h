@@ -122,44 +122,6 @@ typedef struct glslview_texture_collection_t{
 
 
 
-/**
- *	Function data types.
- */
-typedef SDL_Window* (*pglslview_init_renderingapi)(void);
-typedef void (*pglslview_release_vulkan)(void);
-typedef void (*pswapbufferfunctype)(SDL_Window* window);	/*	Function pointer data type.	*/
-typedef void (*presize_screen)(int* event, struct uniform_location_t* uniform, glslviewShader* shader, glslviewTexture* ftexture);
-typedef void (*pupdate_shader_uniform)(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height);
-typedef void (*pupdate_update_uniforms)(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime);
-typedef void (*pset_viewport)(unsigned int width, unsigned int height);
-typedef void (*pdisplaygraphic)(SDL_Window* drawable);
-typedef glslviewTexture* (*pglslview_create_texture)(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels);
-typedef int (*pglslview_create_shader)(glslviewShader* texture, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source);
-typedef void (*pglslview_rendergraphic)(SDL_Window* drawable, glslviewShaderCollection* shader, float ttime, float deltatime);
-
-
-/**
- *
- */
-extern pglslview_init_renderingapi glslview_init_renderingapi;
-extern pglslview_release_vulkan glslview_release_renderingapi;
-extern presize_screen glslview_resize_screen;
-extern pupdate_shader_uniform glslview_update_shader_uniform;
-extern pdisplaygraphic glslview_displaygraphic;
-extern pupdate_update_uniforms glslview_update_uniforms;
-extern pset_viewport glslview_set_viewport;
-extern pswapbufferfunctype glslview_swapbuffer;					/*	Function pointer for swap default framebuffer.	*/
-extern pglslview_create_texture glslview_create_texture;
-extern pglslview_create_shader glslview_create_shader;
-extern pglslview_rendergraphic glslview_rendergraphic;
-
-
-/**
- *	Initialize default function pointer.
- *	It will set all the rendering function pointer
- *	to the OpenGL version.
- */
-extern void glslview_default_init(void);
 
 /**
  *	Initialize glslsview program.
