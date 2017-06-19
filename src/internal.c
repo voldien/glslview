@@ -372,11 +372,24 @@ long int glslview_loadfile(const char* cfilename, void** bufferptr){
     length = ftell(f);
     fseek(f, pos, SEEK_SET);
 
-    /**/
-	buffer = (char*)malloc(length + 1);
-	((char*)buffer)[length] = 0;
-	length = fread(buffer, 1, length,f);
+    /*	*/
+	buffer = (char*)malloc(length);
+	length = fread(buffer, 1, length, f);
 	fclose(f);
+
 	*bufferptr = buffer;
 	return length;
 }
+
+long int glslview_loadString(const char* cfilename, void** bufferptr){
+	long int l;
+
+	l = glslview_loadfile(cfilename, bufferptr);
+	if(l > 0){
+		*bufferptr = realloc(*bufferptr, l + 1);
+		((char*)*bufferptr)[l] = '\0';
+	}
+
+	return l;
+}
+
