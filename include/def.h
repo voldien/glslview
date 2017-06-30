@@ -16,8 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-#ifndef _DEF_H_
-#define _DEF_H_ 1
+#ifndef _GLSLVIEW_DEF_H_
+#define _GLSLVIEW_DEF_H_ 1
 
 
 /**
