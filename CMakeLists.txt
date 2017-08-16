@@ -43,7 +43,7 @@ FILE(GLOB core ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c )
 
 # Add
 ADD_EXECUTABLE(glslview ${core} )
-TARGET_LINK_LIBRARIES(glslview -lSDL2 -lGL -lfreeimage -lvulkan )
+TARGET_LINK_LIBRARIES(glslview -lSDL2 -lGL -lfreeimage )
 
 
 # Install program to executable binary directory.
