@@ -137,7 +137,24 @@ int glslview_init(int argc, const char** argv){
 	return status;
 }
 
+void glslview_terminate(void){
 
+	/*	Releae rendering resources.	*/
+	glslview_gl_release();
+
+	if(g_window != NULL){
+		SDL_DestroyWindow(g_window);
+	}
+
+	/*	*/
+	if(ifd != -1){
+		inotify_rm_watch(ifd, wd);
+		free(inotifybuf);
+		close(ifd);
+	}
+
+	SDL_Quit();
+}
 
 
 int glslview_readargument(int argc, const char** argv, int pass){

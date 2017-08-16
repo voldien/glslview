@@ -122,23 +122,6 @@ void glslview_catchSig(int signal){
 	}
 }
 
-void glslview_terminate(void){
-
-	if(window != NULL){
-		SDL_DestroyWindow(window);
-	}
-
-	/*	*/
-	if(ifd != -1){
-		inotify_rm_watch(ifd, wd);
-		free(inotifybuf);
-		close(ifd);
-	}
-
-	SDL_Quit();
-}
-
-
 #define EVENT_SIZE  ( sizeof (struct inotify_event) )
 #define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
