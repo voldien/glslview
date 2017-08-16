@@ -11,7 +11,6 @@
 #include<sys/inotify.h>	/*	TODO fix such that it uses a portable solution.	*/
 
 
-
 const char* glslview_getVersion(void){
 	return COMPILED_VERSION(GLSLVIEW_MAJOR_VERSION,
 			GLSLVIEW_MINOR_VERSION,
@@ -30,10 +29,6 @@ int glslview_init(int argc, const char** argv){
 	char* fragData = NULL;					/*	*/
 	int x;									/*	Iterator.	*/
 
-
-	/*	Initialize default values that has to been set
-	 *  in order for the software to work.*/
-	glslview_default_init();
 
 	/*	Read user argument options.	*/
 	if(glslview_readargument(argc, argv, 0) == 2){
@@ -65,8 +60,8 @@ int glslview_init(int argc, const char** argv){
 
 
 	/*	Create window.	*/
-	window = glslview_init_renderingapi();
-	if(window == NULL){
+	g_window = glslview_gl_init();
+	if(g_window == NULL){
 		fprintf(stderr, "Failed to init rendering API.\n");
 		status = 0;
 		return status;
@@ -74,11 +69,11 @@ int glslview_init(int argc, const char** argv){
 
 	/*	Set window attributes.	*/
 	sprintf(title, "glslview %s", glslview_getVersion());
-	SDL_ShowWindow(window);
-	SDL_SetWindowTitle(window, title);
+	SDL_ShowWindow(g_window);
+	SDL_SetWindowTitle(g_window, title);
 	SDL_GetCurrentDisplayMode(0, &displaymode);
-	SDL_SetWindowPosition(window, displaymode.w / 4, displaymode.h / 4);
-	SDL_SetWindowSize(window, displaymode.w / 2, displaymode.h  / 2 );
+	SDL_SetWindowPosition(g_window, displaymode.w / 4, displaymode.h / 4);
+	SDL_SetWindowSize(g_window, displaymode.w / 2, displaymode.h  / 2 );
 
 	/*	Second argument read.	*/
 	if(glslview_readargument(argc, argv, 1) == 2){
@@ -95,12 +90,12 @@ int glslview_init(int argc, const char** argv){
 	}
 
 	/*	Allocate shaders buffer collection.	*/
-	shaders = malloc(sizeof(glslviewShaderCollection) * numFragPaths);
-	assert(shaders);
-	memset(shaders, 0, sizeof(glslviewShaderCollection) * numFragPaths);
+	g_shaders = malloc(sizeof(glslviewShaderCollection) * numFragPaths);
+	assert(g_shaders);
+	memset(g_shaders, 0, sizeof(glslviewShaderCollection) * numFragPaths);
 
 	/*	Read from pipe if used.	*/
-	if(isPipe && !use_stdin_as_buffer){
+	if(g_isPipe && !use_stdin_as_buffer){
 		char buf[4096];
 		ssize_t len;
 		ssize_t totallen = 0;
@@ -121,11 +116,11 @@ int glslview_init(int argc, const char** argv){
 
 			/*	Compile shader.	*/
 			glslview_verbose_printf("----------- compiling source code ----------\n");
-			if(glslview_create_shader(&shaders[x].shader, vertex, fragData, NULL, NULL, NULL) == 0){
+			if(glslview_gl_create_shader(&g_shaders[x].shader, vertex, fragData, NULL, NULL, NULL) == 0){
 				fprintf(stderr, "%s, invalid shader.\n", fragPath[x]);
 				return 0;
 			}else{
-				glslview_update_shader_uniform(&shaders[x].uniform, &shaders[x].shader, displaymode.w, displaymode.h);
+				glslview_gl_update_shader_uniform(&g_shaders[x].uniform, &g_shaders[x].shader, displaymode.w, displaymode.h);
 			}
 
 			/*	free fragment source.	*/
@@ -250,15 +245,11 @@ int glslview_readargument(int argc, const char** argv, int pass){
 						SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 						glslview_verbose_printf("Set rendering API to OpenGL-ES.\n");
 					}
-					else if(strcmp(optarg, "vulkan") == 0){
-						glslview_load_vulkan_func_table();
-						glslview_verbose_printf("Set rendering API to Vulkan.\n");
-					}
 				}
 				break;
 			case 'C':
 				glslview_verbose_printf("Enable texture compression.\n");
-				compression = SDL_TRUE;
+				g_compression = SDL_TRUE;
 				break;
 			case 'g':
 				if(optarg){
@@ -316,14 +307,14 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				}
 				break;
 			case 'F':	/*	Fullscreen.	*/
-				fullscreen = SDL_TRUE;
+				g_fullscreen = SDL_TRUE;
 				SDL_DisplayMode dismod;
 				glslview_verbose_printf("Enable fullscreen mode.\n");
 				SDL_GetCurrentDisplayMode(
-						SDL_GetWindowDisplayIndex(window),
+						SDL_GetWindowDisplayIndex(g_window),
 						&dismod);
-				SDL_SetWindowSize(window, dismod.w, dismod.h);
-				SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+				SDL_SetWindowSize(g_window, dismod.w, dismod.h);
+				SDL_SetWindowFullscreen(g_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 				break;
 			case 'w':{	/*	Set as desktop wallpaper.	*/	/*	TODO fix for other distro other than Ubuntu.*/
 				SDL_Point size;
@@ -367,7 +358,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 				SDL_GL_SetSwapInterval(1);
 				break;
 			case 'D':
-				SDL_SetWindowBordered(window, SDL_FALSE);
+				SDL_SetWindowBordered(g_window, SDL_FALSE);
 				break;
 			case 'n':{
 				char buf[4096];
@@ -400,19 +391,19 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			case 't':
 				if(optarg){
 
-					unsigned int width;
-					unsigned int height;
-					unsigned int bpp;
-					void* bitdata;
-					int x = 0;
-					FREE_IMAGE_COLOR_TYPE colortype;
-					FREE_IMAGE_FORMAT format;
-					FIBITMAP* bitmap = NULL;
-					FIBITMAP* convbitmap = NULL;
+					unsigned int width;									/*	*/
+					unsigned int height;								/*	*/
+					unsigned int bpp;									/*	*/
+					void* bitdata;										/*	*/
+					int x = 0;											/*	*/
+					FREE_IMAGE_COLOR_TYPE colortype;					/*	*/
+					FREE_IMAGE_FORMAT format;							/**/
+					FIBITMAP* bitmap = NULL;							/**/
+					FIBITMAP* convbitmap = NULL;						/**/
 
-					unsigned int gformat = TEXTURE_RGB;
-					unsigned int ginternalformat = TEXTURE_RGB;
-					unsigned int type = GL_UNSIGNED_BYTE;
+					unsigned int gformat = TEXTURE_RGB;					/**/
+					unsigned int ginternalformat = TEXTURE_RGB;			/**/
+					unsigned int type = GL_UNSIGNED_BYTE;				/**/
 
 					/*	*/
 					FreeImage_Initialise(0);
@@ -452,7 +443,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 								break;
 							}
 
-							if(compression){
+							if(g_compression){
 								/*	get opengl internal compression format.	*/
 								switch(gformat){
 								case GL_RGB:
@@ -473,7 +464,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 							}
 
 							/*	Create opengl 2D texture.	*/
-							glslview_create_texture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
+							glslview_gl_create_texture(&textures[nextTex], GL_TEXTURE_2D, 0, ginternalformat, width,
 									height, 0, gformat, type, bitdata);
 
 							nextTex++;
