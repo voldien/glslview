@@ -1,5 +1,5 @@
 /**
-	glslview
+    glslview
     Copyright (C) 2017  Valdemar Lindberg
 
     This program is free software: you can redistribute it and/or modify
@@ -75,7 +75,7 @@ extern const char* glslview_getVersion(void);
 /**
  *	Initialize glslsview program.
  *
- *	@Return
+ *	@Return None zero if successful.
  *
  */
 extern int glslview_init(int argc, const char** argv);

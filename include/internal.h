@@ -66,7 +66,7 @@ typedef struct uniform_location_t{
 }UniformLocation;
 
 /**
- *
+ *	Texture.
  */
 typedef struct glslview_texture_t{
 	unsigned int target;			/*	Texture target.	*/
@@ -78,7 +78,7 @@ typedef struct glslview_texture_t{
 }glslviewTexture;
 
 /**
- *
+ *	Shader.
  */
 typedef struct glslview_shader_t{
 	unsigned int ver;		/*	vertex shader.	*/
@@ -91,7 +91,7 @@ typedef struct glslview_shader_t{
 }glslviewShader;
 
 /**
- *
+ *	Shader collection.
  */
 typedef struct glslview_shader_collection_t{
 	UniformLocation uniform;	/*	Uniform of shader.	*/
@@ -99,7 +99,7 @@ typedef struct glslview_shader_collection_t{
 }glslviewShaderCollection;
 
 /**
- *
+ *	Texture collection.
  */
 typedef struct glslview_texture_collection_t{
 	glslviewTexture texture;	/*	Texture.	*/
@@ -126,7 +126,7 @@ typedef struct glslview_texture_collection_t{
 
 
 /**
- *
+ *	Main display funciton.
  */
 extern int glslview_display(void);
 
