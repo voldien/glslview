@@ -1,5 +1,5 @@
 /**
-	glslview
+    glslview
     Copyright (C) 2017  Valdemar Lindberg
 
     This program is free software: you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #ifndef _GLSL_VIEW_H_
 #define _GLSL_VIEW_H_ 1
 #include"def.h"
+#include"utility.h"
 #include"internal.h"
 
 typedef struct glslview_process_unit_t{
@@ -74,10 +75,17 @@ extern const char* glslview_getVersion(void);
 /**
  *	Initialize glslsview program.
  *
- *	@Return
+ *	@Return None zero if successful.
  *
  */
 extern int glslview_init(int argc, const char** argv);
+
+/**
+ *	Terminate glslview.
+ *
+ *	This function releases all resources.
+ */
+extern void glslview_terminate(void);
 
 /**
  *	Read user input argument.

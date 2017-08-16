@@ -25,10 +25,11 @@
 #include<SDL2/SDL.h>
 
 SDL_Window* glslview_gl_init(void){
-	SDL_Window* win;
-	SDL_DisplayMode displaymode;
-	int glatt;
-	int x;
+
+	SDL_Window* win;                /*	*/
+	SDL_DisplayMode displaymode;    /*	*/
+	int glatt;                      /*	*/
+	int x;                          /*	*/
 
 	/*	*/
 	glslview_verbose_printf("Initialize OpenGL rendering interface.\n");
@@ -39,19 +40,20 @@ SDL_Window* glslview_gl_init(void){
 	displaymode.h /= 2;
 	win = SDL_CreateWindow("", displaymode.w/ 2, displaymode.h / 2, displaymode.w, displaymode.h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
-
-
 	if(win == NULL){
+		fprintf(stderr, "SDL_CreateWinow failed, %s.\n", SDL_GetError());
 		return NULL;
 	}
 
-	/*	*/
-	glc = SDL_GL_CreateContext(win);
-	if(glc == NULL){
+	/*	Create OpenGL context.	*/
+	g_glc = SDL_GL_CreateContext(win);
+	if(g_glc == NULL){
 		fprintf(stderr, "Failed to create OpenGL context, %s.\n", SDL_GetError());
-		assert(glc);
+		assert(g_glc);
 	}
-	if(SDL_GL_MakeCurrent(win, glc) < 0){
+
+	/*	Bind opengl context to window.	*/
+	if(SDL_GL_MakeCurrent(win, g_glc) < 0){
 		fprintf(stderr, "Failed to make current OpenGL context, %s.\n", SDL_GetError());
 		return NULL;
 	}

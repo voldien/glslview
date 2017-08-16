@@ -44,46 +44,42 @@ const float quad[4][3] = {
 		{-1.0f, 1.0f, 0.0f},
 		{ 1.0f, -1.0f, 0.0f},
 		{ 1.0f,  1.0f, 0.0f},
-
 };
 
-
-
-
-
 /*	quad buffer.	*/
-unsigned int vao = 0;						/*	*/
-unsigned int vbo = 0;						/*	*/
+unsigned int vao = 0;                           /*	*/
+unsigned int vbo = 0;                           /*	*/
 
 /**/
-SDL_GLContext glc;
-SDL_Window* window = NULL;						/*	Window.	*/
-SDL_Window* drawable = NULL;					/*	Window.	*/
-unsigned int renderingapi = 0;					/*	rendering api.	*/
-int fullscreen = 0;								/*	Set window fullscreen.	*/
-int verbose = 0;								/*	enable verbose.	*/
-int debug = 0;									/*	enable debugging.	*/
-int compression = 0;							/*	Use compression.	*/
-unsigned int isAlive = 1;						/*	*/
-int ifd = -1;									/*	inotify file descriptor.*/
-int wd = -1;									/*	inotify watch directory.	*/
-char* inotifybuf = NULL;						/*	*/
-unsigned int numFragPaths = 0;					/*	*/
-unsigned int numShaderPass = 0;
-char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
-/**/
-glslviewShaderCollection* shaders = NULL;
-unsigned int fbo = 0;							/*	*/
-unsigned int ftextype = GL_FLOAT;
-unsigned int ftexinternalformat = GL_RGBA;
-unsigned int ftexformat = GL_RGBA;
-glslviewTexture fbackbuffertex = {0};					/*	framebuffer texture for backbuffer uniform variable.	*/
-glslviewTexture textures[8] = {{0}};					/*	*/
+SDL_GLContext g_glc;                            /*	*/
+SDL_Window* g_window = NULL;                    /*	Window.	*/
+SDL_Window* drawable = NULL;                    /*	Window.	*/
+unsigned int renderingapi = 0;                  /*	rendering api.	*/
+int g_fullscreen = 0;                           /*	Set window fullscreen.	*/
+int g_verbose = GLSLVIEW_QUITE;                 /*	enable verbose.	*/
+int g_debug = 0;                                /*	enable debugging.	*/
+int g_compression = 0;                          /*	Use compression.	*/
+unsigned int g_isAlive = 1;                     /*	*/
+int ifd = -1;                                   /*	inotify file descriptor.*/
+int wd = -1;                                    /*	inotify watch directory.	*/
+char* inotifybuf = NULL;                        /*	*/
+unsigned int numFragPaths = 0;                  /*	*/
+unsigned int numShaderPass = 0;                 /*	*/
+char* fragPath[32] = {NULL};                    /*	Path of fragment shader.	*/
+
+/*	Rendering global variable.	*/
+glslviewShaderCollection* g_shaders = NULL;     /*	*/
+unsigned int g_fbo = 0;                         /*	*/
+unsigned int g_ftextype = GL_FLOAT;             /*	*/
+unsigned int g_ftexinternalformat = GL_RGBA;    /*	*/
+unsigned int g_ftexformat = GL_RGBA;            /*	*/
+glslviewTexture fbackbuffertex = {0};           /*	framebuffer texture for backbuffer uniform variable.	*/
+glslviewTexture textures[8] = {{0}};            /*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
-unsigned int nextTex = 0;						/*	*/
-unsigned int isPipe;							/*	*/
-unsigned int use_stdin_as_buffer = 0;			/*	*/
-int stdin_buffer_size = 1;						/*	*/
+unsigned int nextTex = 0;                       /*	*/
+unsigned int g_isPipe;                          /*	*/
+unsigned int use_stdin_as_buffer = 0;           /*	*/
+int stdin_buffer_size = 1;                      /*	*/
 
 
 int needsUpdate(glslviewShaderCollection* shader){
@@ -107,7 +103,7 @@ void glslview_catchSig(int signal){
 	switch(signal){
 	case SIGINT:
 	case SIGQUIT:
-		isAlive = SDL_FALSE;
+		g_isAlive = SDL_FALSE;
 		event.type = SDL_QUIT;
 		SDL_PushEvent(&event);
 		break;
@@ -126,86 +122,69 @@ void glslview_catchSig(int signal){
 	}
 }
 
-void glslview_terminate(void){
-
-	if(window != NULL){
-		SDL_DestroyWindow(window);
-	}
-
-	/*	*/
-	if(ifd != -1){
-		inotify_rm_watch(ifd, wd);
-		free(inotifybuf);
-		close(ifd);
-	}
-
-	SDL_Quit();
-}
-
-
 #define EVENT_SIZE  ( sizeof (struct inotify_event) )
 #define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
 int glslview_display(void){
 
-	SDL_Event event = {0};					/*	*/
-	float elapse;							/*	Time elapse since start in seconds.	*/
-	SDL_Point size;							/*	*/
-	char* fragData = NULL;					/*	*/
-	int x;									/*	iterator.	*/
-	float mouse[2];							/*	*/
+	SDL_Event event = {0};                  /*	*/
+	float elapse;                           /*	Time elapse since start in seconds.	*/
+	SDL_Point size;                         /*	*/
+	char* fragData = NULL;                  /*	*/
+	int x;                                  /*	Iterator.	*/
+	float mouse[2];                         /*	*/
 
 	/**/
-	long int private_start;					/*	Timestamp start.	*/
-	long int pretime;						/*	Previous timestamp.	*/
-	long int deltatime;						/*	Delta timestamp.	*/
-	int visable = 1;						/*	View visibility.	*/
-	int renderInBackground = 0;				/*	whether being rendered in the background or not.	*/
-	unsigned int needsFrameUpdate = 0;		/*	If time is enabled.	*/
-	unsigned int needmouseupdate = 0;		/*	If mouse input is enabled.	*/
-	int eventtimeout = INT32_MAX;			/*	*/
+	long int private_start;                 /*	Timestamp start.	*/
+	long int pretime;                       /*	Previous timestamp.	*/
+	long int deltatime;                     /*	Delta timestamp.	*/
 
-	/**/
-	struct timeval timeval ={ 0, 1000 };			/*	Timeout for the inotify.	*/
+	volatile int visable = 1;               /*	View visibility.	*/
+	volatile int renderInBackground = 0;    /*	whether being rendered in the background or not.	*/
+	unsigned int needsFrameUpdate = 0;      /*	If time is enabled.	*/
+	unsigned int needmouseupdate = 0;       /*	If mouse input is enabled.	*/
+	int eventtimeout = INT32_MAX;           /*	*/
 
+	/*	*/
+	struct timeval timeval = { 0, 1000 };   /*	Timeout for the inotify.	*/
 
 	/*	*/
 	private_start = SDL_GetPerformanceCounter();
 	pretime = SDL_GetPerformanceCounter();
 
-
+	/*	*/
 	if(ifd < 0 ){
 		timeval.tv_sec = 0;
 		timeval.tv_usec = 0;
 	}
 
 	/*	TODO improve later, because mouse input and other has to be taking into consideration.*/
-	if(needsUpdate(shaders) ){
+	if(needsUpdate(g_shaders) ){
 		eventtimeout = 0;
 	}
 
-
 	/*	*/
-	while(isAlive){
+	while(g_isAlive){
 
 		/*	*/
 		while(SDL_WaitEventTimeout(&event, eventtimeout)){
 
 			switch(event.type){
 			case SDL_QUIT:
-				isAlive = SDL_FALSE;
+				g_isAlive = SDL_FALSE;
 				eventtimeout = 0;
 			break;
 			case SDL_KEYDOWN:
-				printf("%d\n", event.key.keysym.sym);
+
+				glslview_debug_printf("%d\n", event.key.keysym.sym);
 				if(event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_CTRL )){
-					fullscreen = ~fullscreen & SDL_TRUE;
-					SDL_SetWindowFullscreen( window, fullscreen == SDL_TRUE ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+					g_fullscreen = ~g_fullscreen & SDL_TRUE;
+					SDL_SetWindowFullscreen( g_window, g_fullscreen == SDL_TRUE ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
 				}
 			break;
 			case SDL_MOUSEMOTION:
 				for(x = 0; x < numShaderPass; x++){
-					glUniform2fv(shaders[x].uniform.mouse, 1, &mouse[0]);
+					glUniform2fv(g_shaders[x].uniform.mouse, 1, &mouse[0]);
 				}
 			break;
 			case SDL_MOUSEWHEEL:
@@ -213,28 +192,28 @@ int glslview_display(void){
 			case SDL_WINDOWEVENT:
 				switch(event.window.event){
 				case SDL_WINDOWEVENT_RESIZED:
-					glslview_set_viewport(event.window.data1, event.window.data2);
+					glslview_gl_set_viewport(event.window.data1, event.window.data2);
 					for(x = 0; x < numShaderPass; x++){
-						glslview_resize_screen(&event.window.data1, &shaders[x].uniform, &shaders[x], &fbackbuffertex);
+						glslview_gl_resize_screen(&event.window.data1, &g_shaders[x].uniform, &g_shaders[x], &fbackbuffertex);
 					}
-					glslview_rendergraphic(drawable, shaders, elapse, deltatime);
+					glslview_gl_rendergraphic(drawable, g_shaders, elapse, deltatime);
 					break;
 				case SDL_WINDOWEVENT_MOVED:
 					for(x = 0; x < numShaderPass; x++){
-						if(shaders[x].uniform.offset != -1){
-							glUniform2i(shaders[x].uniform.offset, 0, 0);
+						if(g_shaders[x].uniform.offset != -1){
+							glUniform2i(g_shaders[x].uniform.offset, 0, 0);
 						}
 					}
 					break;
 				case SDL_WINDOWEVENT_SHOWN:
 				case SDL_WINDOWEVENT_EXPOSED:
 					visable = SDL_TRUE;
-					SDL_GetWindowSize(window, &size.x, &size.y);
-					glslview_set_viewport(size.x, size.y);
+					SDL_GetWindowSize(g_window, &size.x, &size.y);
+					glslview_gl_set_viewport(size.x, size.y);
 					for(x = 0; x < numShaderPass; x++){
-						glslview_resize_screen(&size.x, &shaders[x].uniform, &shaders[x], &fbackbuffertex);
+						glslview_gl_resize_screen(&size.x, &g_shaders[x].uniform, &g_shaders[x], &fbackbuffertex);
 					}
-					glslview_rendergraphic(drawable, shaders, elapse, deltatime);
+					glslview_gl_rendergraphic(drawable, g_shaders, elapse, deltatime);
 					break;
 				case SDL_WINDOWEVENT_MINIMIZED:
 				case SDL_WINDOWEVENT_HIDDEN:
@@ -270,7 +249,7 @@ int glslview_display(void){
 			}
 			else if(ret == 0){
 				if(visable || renderInBackground){
-					glslview_rendergraphic(drawable, shaders, elapse, deltatime);
+					glslview_gl_rendergraphic(drawable, g_shaders, elapse, deltatime);
 				}
 			}else{
 				struct inotify_event ionevent;
@@ -295,19 +274,19 @@ int glslview_display(void){
 							if(strcmp(ionevent.name, ptmp ) == 0){
 								glslview_verbose_printf("Updating %s\n", fragPath[x]);
 
-								glDeleteProgram(shaders[x].shader.program);
-								memset(&shaders[x].shader, 0, sizeof(glslviewShader));
+								glDeleteProgram(g_shaders[x].shader.program);
+								memset(&g_shaders[x].shader, 0, sizeof(glslviewShader));
 
 								glslview_loadfile((const char*)fragPath[x], (void**)&fragData);
-								if(glslview_create_shader(&shaders[x].shader, vertex, (const char*)fragData, NULL, NULL, NULL)){
+								if(glslview_gl_create_shader(&g_shaders[x].shader, vertex, (const char*)fragData, NULL, NULL, NULL)){
 									/**/
 								}
 
 								free(fragData);
 
-								SDL_GetWindowSize(window, &size.x, &size.y);
-								glUseProgram(shaders[x].shader.program);
-								glslview_update_shader_uniform(&shaders[x].uniform, &shaders[x].uniform, size.x, size.y);
+								SDL_GetWindowSize(g_window, &size.x, &size.y);
+								glUseProgram(g_shaders[x].shader.program);
+								glslview_gl_update_shader_uniform(&g_shaders[x].uniform, &g_shaders[x].uniform, size.x, size.y);
 								break;
 							}
 						}
@@ -324,7 +303,7 @@ int glslview_display(void){
 		else{
 
 			if(visable || renderInBackground){
-				glslview_rendergraphic(drawable, shaders, elapse, deltatime);
+				glslview_gl_rendergraphic(drawable, g_shaders, elapse, deltatime);
 			}else{/*	render passes	*/
 				sleep(1);
 			}

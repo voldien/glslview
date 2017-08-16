@@ -39,7 +39,7 @@ extern void glslview_gl_release(void);
  *	Create texture. Uses similar function paramter call as
  *	glTexImage2D.
  *
- *	@Return
+ *	@Return non-null if successfully.
  */
 extern glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture, unsigned int target, int level,
 		int internalFormat, int width, int height, int border, unsigned int format, unsigned int type,
