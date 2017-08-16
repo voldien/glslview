@@ -19,6 +19,7 @@
 #ifndef _GLSL_VIEW_H_
 #define _GLSL_VIEW_H_ 1
 #include"def.h"
+#include"utility.h"
 #include"internal.h"
 
 typedef struct glslview_process_unit_t{
