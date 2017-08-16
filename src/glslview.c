@@ -190,6 +190,8 @@ int glslview_readargument(int argc, const char** argv, int pass){
 	/*	First argument pass.	*/
 	if(pass == 0){
 		glslview_verbose_printf("--------- First argument pass -------\n\n");
+
+		/*	Check version or verbosity level first.	*/
 		while((c = getopt_long(argc, (char *const *)argv, shortopts, longoption, &index)) != EOF){
 			switch(c){
 			case 'v':{
@@ -198,7 +200,7 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			}
 			case 'V':
 				glslview_set_verbosity_level(GLSLVIEW_VERBOSE);
-				glslview_verbose_printf("Enable verbose.\n");
+				glslview_debug_printf("Enable verbose.\n");
 				break;
 			case 'd':{	/*	enable debug.	*/
 			    g_debug = SDL_TRUE;
@@ -207,8 +209,22 @@ int glslview_readargument(int argc, const char** argv, int pass){
 			    SDL_GL_GetAttribute(SDL_GL_CONTEXT_FLAGS, &glatt);
 			    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, glatt | SDL_GL_CONTEXT_DEBUG_FLAG);
 			}break;
+			default:
+				break;
+			}
+		}
+
+		/*	Reset getopt.	*/
+		optarg = NULL;
+		opterr = 0;
+		optind = 0;
+		optopt = 0;
+
+
+		while((c = getopt_long(argc, (char *const *)argv, shortopts, longoption, &index)) != EOF){
+			switch(c){
 			case 'a':
-				glslview_verbose_printf("Enable alpha buffer.\n");
+				glslview_debug_printf("Enable alpha buffer.\n");
 				SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 				break;
 			case 'S':

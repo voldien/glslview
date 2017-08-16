@@ -295,10 +295,11 @@ int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
 	int error = 1;
 	GLuint lstatus;
 	char glversion[64];
+	const unsigned int nsources = 2;
 	char** vsources[2] = {""};
 	char** fsources[2] = {""};
 
-	/**/
+	/*	Create version string.	*/
 	sprintf(glversion, "#version %d\n", glslview_get_GLSL_version());
 
 	/*	Assign version header unless explicity defined.	*/
@@ -307,7 +308,7 @@ int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
 	if(strstr(cfragmentSource, "#version") == NULL)
 		fsources[0] = &glversion[0];
 
-
+	/*	Assign source.	*/
 	vsources[1] = (char*)cvertexSource;
 	fsources[1] = (char*)cfragmentSource;
 
@@ -316,11 +317,11 @@ int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
 
 	/*	*/
 	if(cvertexSource){
-		shader->ver = glslview_compile_shader(vsources, 2, GL_VERTEX_SHADER);
+		shader->ver = glslview_compile_shader(vsources, nsources, GL_VERTEX_SHADER);
 		glAttachShader(shader->program, shader->ver);
 	}
 	if(cfragmentSource){
-		shader->fra = glslview_compile_shader(fsources, 2, GL_FRAGMENT_SHADER);
+		shader->fra = glslview_compile_shader(fsources, nsources, GL_FRAGMENT_SHADER);
 		glAttachShader(shader->program, shader->fra);
 	}
 	/*
@@ -359,17 +360,26 @@ int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
 #endif
 	glValidateProgram(shader->program);
 
-	/*	Setach shader objects and release their resources.	*/
-	glDetachShader(shader->program, shader->ver);
-	glDetachShader(shader->program, shader->fra);
-	glDetachShader(shader->program, shader->geo);
-	glDetachShader(shader->program, shader->tesc);
-	glDetachShader(shader->program, shader->tese);
-	glDeleteShader(shader->ver);
-	glDeleteShader(shader->fra);
-	glDeleteShader(shader->geo);
-	glDeleteShader(shader->tesc);
-	glDeleteShader(shader->tese);
+	if(glIsShader(shader->ver)){
+		glDetachShader(shader->program, shader->ver);
+		glDeleteShader(shader->ver);
+	}
+	if(glIsShader(shader->fra)){
+		glDetachShader(shader->program, shader->fra);
+		glDeleteShader(shader->fra);
+	}
+	if(glIsShader(shader->geo)){
+		glDetachShader(shader->program, shader->geo);
+		glDeleteShader(shader->geo);
+	}
+	if(glIsShader(shader->tesc)){
+		glDetachShader(shader->program, shader->tesc);
+		glDeleteShader(shader->tesc);
+	}
+	if(glIsShader(shader->tese)){
+		glDetachShader(shader->program, shader->tese);
+		glDeleteShader(shader->tese);
+	}
 
 	return error;
 }

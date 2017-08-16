@@ -23,9 +23,9 @@
 /**
  *	Logging level.
  */
-#define GLSLVIEW_QUITE		0x0		/*	Quite. Opresses all glslview_log_printf call.	*/
-#define GLSLVIEW_VERBOSE	0x1		/*	Verbose, print only verbose.	*/
-#define GLSLVIEW_DEBUG		0x3		/*	Debu, prints all.	*/
+#define GLSLVIEW_QUITE      0x0		/*	Quite. Opresses all glslview_log_printf call.	*/
+#define GLSLVIEW_VERBOSE    0x1		/*	Verbose, print only verbose.	*/
+#define GLSLVIEW_DEBUG      0x3		/*	Debu, prints all.	*/
 
 /**
  *	Set verbosity level.
