@@ -44,46 +44,42 @@ const float quad[4][3] = {
 		{-1.0f, 1.0f, 0.0f},
 		{ 1.0f, -1.0f, 0.0f},
 		{ 1.0f,  1.0f, 0.0f},
-
 };
 
-
-
-
-
 /*	quad buffer.	*/
-unsigned int vao = 0;						/*	*/
-unsigned int vbo = 0;						/*	*/
+unsigned int vao = 0;                           /*	*/
+unsigned int vbo = 0;                           /*	*/
 
 /**/
-SDL_GLContext glc;
-SDL_Window* window = NULL;						/*	Window.	*/
-SDL_Window* drawable = NULL;					/*	Window.	*/
-unsigned int renderingapi = 0;					/*	rendering api.	*/
-int fullscreen = 0;								/*	Set window fullscreen.	*/
-int verbose = 0;								/*	enable verbose.	*/
-int debug = 0;									/*	enable debugging.	*/
-int compression = 0;							/*	Use compression.	*/
-unsigned int isAlive = 1;						/*	*/
-int ifd = -1;									/*	inotify file descriptor.*/
-int wd = -1;									/*	inotify watch directory.	*/
-char* inotifybuf = NULL;						/*	*/
-unsigned int numFragPaths = 0;					/*	*/
-unsigned int numShaderPass = 0;
-char* fragPath[32] = {NULL};					/*	Path of fragment shader.	*/
-/**/
-glslviewShaderCollection* shaders = NULL;
-unsigned int fbo = 0;							/*	*/
-unsigned int ftextype = GL_FLOAT;
-unsigned int ftexinternalformat = GL_RGBA;
-unsigned int ftexformat = GL_RGBA;
-glslviewTexture fbackbuffertex = {0};					/*	framebuffer texture for backbuffer uniform variable.	*/
-glslviewTexture textures[8] = {{0}};					/*	*/
+SDL_GLContext g_glc;                            /*	*/
+SDL_Window* g_window = NULL;                    /*	Window.	*/
+SDL_Window* drawable = NULL;                    /*	Window.	*/
+unsigned int renderingapi = 0;                  /*	rendering api.	*/
+int g_fullscreen = 0;                           /*	Set window fullscreen.	*/
+int g_verbose = GLSLVIEW_QUITE;                 /*	enable verbose.	*/
+int g_debug = 0;                                /*	enable debugging.	*/
+int g_compression = 0;                          /*	Use compression.	*/
+unsigned int g_isAlive = 1;                     /*	*/
+int ifd = -1;                                   /*	inotify file descriptor.*/
+int wd = -1;                                    /*	inotify watch directory.	*/
+char* inotifybuf = NULL;                        /*	*/
+unsigned int numFragPaths = 0;                  /*	*/
+unsigned int numShaderPass = 0;                 /*	*/
+char* fragPath[32] = {NULL};                    /*	Path of fragment shader.	*/
+
+/*	Rendering global variable.	*/
+glslviewShaderCollection* g_shaders = NULL;     /*	*/
+unsigned int g_fbo = 0;                         /*	*/
+unsigned int g_ftextype = GL_FLOAT;             /*	*/
+unsigned int g_ftexinternalformat = GL_RGBA;    /*	*/
+unsigned int g_ftexformat = GL_RGBA;            /*	*/
+glslviewTexture fbackbuffertex = {0};           /*	framebuffer texture for backbuffer uniform variable.	*/
+glslviewTexture textures[8] = {{0}};            /*	*/
 const int numTextures = sizeof(textures) / sizeof(textures[0]);
-unsigned int nextTex = 0;						/*	*/
-unsigned int isPipe;							/*	*/
-unsigned int use_stdin_as_buffer = 0;			/*	*/
-int stdin_buffer_size = 1;						/*	*/
+unsigned int nextTex = 0;                       /*	*/
+unsigned int g_isPipe;                          /*	*/
+unsigned int use_stdin_as_buffer = 0;           /*	*/
+int stdin_buffer_size = 1;                      /*	*/
 
 
 int needsUpdate(glslviewShaderCollection* shader){
