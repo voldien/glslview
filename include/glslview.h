@@ -81,6 +81,13 @@ extern const char* glslview_getVersion(void);
 extern int glslview_init(int argc, const char** argv);
 
 /**
+ *	Terminate glslview.
+ *
+ *	This function releases all resources.
+ */
+extern void glslview_terminate(void);
+
+/**
  *	Read user input argument.
  *
  *	@Return status.

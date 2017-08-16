@@ -123,13 +123,7 @@ typedef struct glslview_texture_collection_t{
 
 
 
-/**
- *	Initialize glslsview program.
- *
- *	@Return
- *
- */
-extern void glslview_terminate(void);
+
 
 /**
  *
