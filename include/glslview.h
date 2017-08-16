@@ -26,42 +26,42 @@ typedef struct glslview_process_unit_t{
 }GlslviewProcessUnit;
 
 /*	Read only.	*/
-extern const float quad[4][3];						/*	Display quad.	*/
-extern const char* vertex;							/*	Display vertex shader.	*/
+extern const float quad[4][3];                      /*	Display quad.	*/
+extern const char* vertex;                          /*	Display vertex shader.	*/
 
-extern unsigned int vao;							/*	Display vertex array object.	*/
-extern unsigned int vbo;							/*	Display vertex buffer object.	*/
+extern unsigned int vao;                            /*	Display vertex array object.	*/
+extern unsigned int vbo;                            /*	Display vertex buffer object.	*/
 
 /*	*/
-extern SDL_GLContext glc;							/*	OpenGL Context.	*/
-extern SDL_Window* window;							/*	Window.	*/
-extern SDL_Window* drawable;
-extern int fullscreen;								/*	Set window fullscreen.	*/
-extern int g_verbose;									/*	enable verbose.	*/
-extern int g_debug;									/*	enable debugging.	*/
-extern int compression;								/*	Use compression.	*/
-extern unsigned int rendererapi;					/*	Rendering API.	*/
-extern unsigned int isAlive;						/*	*/
-extern int ifd;										/*	inotify file descriptor.*/
-extern int wd;										/*	inotify watch directory.	*/
-extern char* inotifybuf;							/*	*/
-extern unsigned int numFragPaths;					/*	*/
-extern unsigned int numShaderPass;					/*	*/
-extern char* fragPath[32];							/*	Path of fragment shader.	*/
+extern SDL_GLContext g_glc;                         /*	OpenGL Context.	*/
+extern SDL_Window* g_window;                        /*	Window.	*/
+extern SDL_Window* drawable;                        /*	*/
+extern int g_fullscreen;                            /*	Set window fullscreen.	*/
+extern int g_verbose;                               /*	enable verbose.	*/
+extern int g_debug;                                 /*	enable debugging.	*/
+extern int g_compression;                           /*	Use compression.	*/
+extern unsigned int rendererapi;                    /*	Rendering API.	*/
+extern unsigned int g_isAlive;                      /*	*/
+extern int ifd;                                     /*	inotify file descriptor.*/
+extern int wd;                                      /*	inotify watch directory.	*/
+extern char* inotifybuf;                            /*	*/
+extern unsigned int numFragPaths;                   /*	*/
+extern unsigned int numShaderPass;                  /*	*/
+extern char* fragPath[32];                          /*	Path of fragment shader.	*/
 
-extern glslviewShaderCollection* shaders;			/*	Shaders.	*/
-extern unsigned int fbo;							/*	*/
-extern unsigned int ftextype;						/**/
-extern unsigned int ftexinternalformat;				/**/
-extern unsigned int ftexformat;						/**/
-extern glslviewTexture fbackbuffertex;				/*	framebuffer texture for backbuffer uniform variable.	*/
-extern glslviewTexture textures[8];					/*	*/
-extern glslviewTextureCollection* texturess;		/*	TODO replace textures variable.	*/
-extern const int numTextures;						/*	*/
-extern unsigned int nextTex;						/*	*/
-extern unsigned int isPipe;							/*	Is STDIN pipe used.	*/
-extern unsigned int use_stdin_as_buffer;			/*	*/
-extern int stdin_buffer_size;						/*	*/
+extern glslviewShaderCollection* g_shaders;         /*	Shaders.	*/
+extern unsigned int g_fbo;                          /*	*/
+extern unsigned int g_ftextype;                     /**/
+extern unsigned int g_ftexinternalformat;           /**/
+extern unsigned int g_ftexformat;                   /**/
+extern glslviewTexture fbackbuffertex;              /*	framebuffer texture for backbuffer uniform variable.	*/
+extern glslviewTexture textures[8];                 /*	*/
+extern glslviewTextureCollection* texturess;        /*	TODO replace textures variable.	*/
+extern const int numTextures;                       /*	*/
+extern unsigned int nextTex;                        /*	*/
+extern unsigned int g_isPipe;                       /*	Is STDIN pipe used.	*/
+extern unsigned int use_stdin_as_buffer;            /*	*/
+extern int stdin_buffer_size;                       /*	*/
 
 
 /**

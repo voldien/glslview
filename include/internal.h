@@ -150,19 +150,4 @@ extern void glslview_catchSig(int signal);
  */
 extern int needsUpdate(glslviewShaderCollection* shader);
 
-/**
- *	Load file from filepath.
- *
- *	@Return if sucesfully the number of bytes loaded, -1 otherwise.
- */
-extern long int glslview_loadfile(const char* cfilename, void** bufferptr);
-
-/**
- *	Load string from filepath.
- *
- *	@Return if sucesfully the number of bytes loaded, -1 otherwise.
- */
-extern long int glslview_loadString(const char* cfilename, void** bufferptr);
-
-
 #endif

@@ -16,8 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
-
-#include "internal.h"
+#include"glslview.h"
 #include <unistd.h>
 
 int main(int argc, const char** argv){
@@ -25,26 +24,31 @@ int main(int argc, const char** argv){
 	int status = EXIT_SUCCESS;		/*	Exit status.	*/
 
 	/*	Check if STDIN is piped.	*/
-	isPipe = isatty(STDIN_FILENO) == 0;
-	if(argc <= 1 && !isPipe){
+	g_isPipe = isatty(STDIN_FILENO) == 0;
+	if(argc <= 1 && !g_isPipe){
 		fprintf(stderr, "No arguments.\n");
 		return EXIT_FAILURE;
 	}
 
 	/*	Initialize glslview.	*/
 	if(glslview_init(argc, argv) == 0){
+		fprintf(stderr, "glslview_init failed.\n");
 		status = EXIT_FAILURE;
 		goto error;
 	}
 
-	/*	Main function.	*/
-	glslview_display();
+	/*	Main display function.	*/
+	if(!glslview_display()){
+		fprintf(stderr, "glslview_display failed.\n");
+		status = EXIT_FAILURE;
+		goto error;
+	}
 
 	error:	/*	*/
 
 	/*	Release resources.	*/
 	glslview_verbose_printf("glslview is terminating.\n");
-	glslview_release_renderingapi();
+	glslview_gl_release();
 	glslview_terminate();
 
 	return status;

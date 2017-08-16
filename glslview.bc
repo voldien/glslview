@@ -1,0 +1,31 @@
+# bash completion for glslview(1)
+
+
+_glslview() 
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="--version --verbose --debug --alpha --wallpaper --fullscreen --vsync --inotify --srgb --stdin --no-decoration --antialiasing --file= --opengl= --renderer= --resolution-scale= --texture="
+
+	case "${prev}" in
+		"--file=" | "--texture=")
+			COMPREPLY=( $(compgen -f ${cur}) )
+			return 0	
+		;;
+		"--renderer=")
+			local subopt="opengl"
+			COMPREPLY=( $(compgen -W "${subopt}" -- ${cur}) )
+			return 0
+		;;
+		*)
+		;;
+	esac
+
+	if [[ ${cur} == -* ]] ; then
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		return 0
+	fi
+}
+complete -F _glslview glslview

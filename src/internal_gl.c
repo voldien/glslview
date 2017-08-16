@@ -17,7 +17,7 @@
 
 */
 
-#include"glslview.h"
+#include"rendering.h"
 #include<stdio.h>
 #include<unistd.h>
 #include<GL/gl.h>
@@ -72,7 +72,7 @@ SDL_Window* glslview_gl_init(void){
 	glslview_verbose_printf("OpenGL renderer string: %s.\n\n", glGetString(GL_RENDERER));
 
 
-	/*	*/
+	/*	Set OpenGL default state.	*/
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_BLEND);
@@ -81,14 +81,16 @@ SDL_Window* glslview_gl_init(void){
 	glDisable(GL_STENCIL_TEST);
 
 
-	/*	*/
+	/*	Check if alpha is used.	*/
 	SDL_GL_GetAttribute(SDL_GL_ALPHA_SIZE, &glatt);
 	if(glatt > 0){
+		/*	Enable alpha buffer bits.	*/
 		glClearColor(0.0, 0.0, 0.0, 1.0);
 		glEnable(GL_ALPHA_TEST);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	}
 	else{
+		/*	Disable alpha buffer bits.	*/
 		glClearColor(0.0, 0.0, 0.0, 0.0);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 		glDisable(GL_ALPHA_TEST);
@@ -117,7 +119,7 @@ SDL_Window* glslview_gl_init(void){
 		glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
 	}
 
-	/*	Bind all textures.	*/
+	/*	Bind all textures once.	*/
 	for(x = 0; x < numTextures; x++){
 		if(glIsTexture(textures[x].texture) == GL_TRUE){
 			glslview_verbose_printf("Binding texture %d.\n", x);
@@ -152,7 +154,7 @@ void glslview_gl_release(void){
 			glDeleteBuffers(1, &vbo);
 		}
 
-		/*	textures.	*/
+		/*	Release each textures.	*/
 		for(x = 0; x < numTextures; x++){
 			if(glIsTexture(textures[x].texture) == GL_TRUE){
 				glDeleteTextures(1, &textures[x].texture);
@@ -163,16 +165,17 @@ void glslview_gl_release(void){
 			glDeleteTextures(1, &fbackbuffertex.texture);
 		}
 
-		SDL_GL_DeleteContext(glc);
+		/*	Unbind glcontext and delete.	*/
+		SDL_GL_MakeCurrent(g_window, NULL);
+		SDL_GL_DeleteContext(g_glc);
 	}
 }
 
 
-GLuint getTextureFormat(unsigned int texfor){
-
+GLuint getTextureFormat(unsigned int format){
 
 	/*	*/
-	switch(texfor){
+	switch(format){
 	case TEXTURE_RGB:
 		return GL_RGB;
 	case TEXTURE_RGBA:
@@ -190,7 +193,10 @@ GLuint getTextureFormat(unsigned int texfor){
 	}
 }
 
-glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture, unsigned int target, int level, int internalFormat, int width, int height, int border, unsigned int format, unsigned int type, const void *pixels){
+glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture,
+		unsigned int target, int level, int internalFormat, int width,
+		int height, int border, unsigned int format, unsigned int type,
+		const void *pixels) {
 
 	assert(texture);
 
@@ -198,6 +204,7 @@ glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture, unsigned i
 	internalFormat = getTextureFormat(internalFormat);
 	format = getTextureFormat(format);
 
+	/*	*/
 	texture->target = target;
 	texture->internalformat = internalFormat;
 	texture->width = width;
@@ -205,12 +212,12 @@ glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture, unsigned i
 	texture->internalformat = format;
 	texture->type = type;
 
-
-
+	/*	*/
 	glGenTextures(1, &texture->texture);
 	glBindTexture(target, texture->texture);
 	glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
+	/*	*/
 	switch(target){
 	case GL_TEXTURE_2D:
 		glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
@@ -237,7 +244,7 @@ glslviewTexture* glslview_gl_create_texture(glslviewTexture* texture, unsigned i
 }
 
 
-int compile_shader(const char** source, unsigned int num, unsigned int type){
+int glslview_compile_shader(const char** source, unsigned int num, unsigned int type){
 
 	int shader;
 	int status;
@@ -279,7 +286,9 @@ static unsigned int glslview_get_GLSL_version(void){
 	return version;
 }
 
-int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource, const char* cfragmentSource, const char* cgeometry_source, const char* ctess_c_source, const char* ctess_e_source){
+int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
+		const char* cfragmentSource, const char* cgeometry_source,
+		const char* ctess_c_source, const char* ctess_e_source) {
 
 	int error = 1;
 	GLuint lstatus;
@@ -305,11 +314,11 @@ int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
 
 	/*	*/
 	if(cvertexSource){
-		shader->ver = compile_shader(vsources, 2, GL_VERTEX_SHADER);
+		shader->ver = glslview_compile_shader(vsources, 2, GL_VERTEX_SHADER);
 		glAttachShader(shader->program, shader->ver);
 	}
 	if(cfragmentSource){
-		shader->fra = compile_shader(fsources, 2, GL_FRAGMENT_SHADER);
+		shader->fra = glslview_compile_shader(fsources, 2, GL_FRAGMENT_SHADER);
 		glAttachShader(shader->program, shader->fra);
 	}
 	/*
@@ -364,23 +373,28 @@ int glslview_gl_create_shader(glslviewShader* shader, const char* cvertexSource,
 }
 
 
-void glslview_gl_resize_screen(int* res, UniformLocation* uniform, glslviewShader* shader, glslviewTexture* ftexture){
+void glslview_gl_resize_screen(int* res, UniformLocation* uniform,
+		glslviewShader* shader, glslviewTexture* ftexture) {
 
 	float resolution[2] = {res[0], res[1]};
 	glUniform2fv(uniform->resolution, 1, &resolution[0]);
-	glslview_verbose_printf("%dx%d.\n", res[0], res[1]);
-	/**/
+	glslview_debug_printf("gl window resize, %dx%d.\n", res[0], res[1]);
 
+	/**/
 	if(ftexture){
 		if(glIsTexture(fbackbuffertex.texture) == GL_TRUE){
 			glDeleteTextures(1, &fbackbuffertex.texture);
-			glslview_gl_create_texture(&fbackbuffertex, GL_TEXTURE_2D,  0, g_ftexinternalformat, res[0], res[1], 0, g_ftexformat, g_ftextype, NULL);
+			glslview_gl_create_texture(&fbackbuffertex, GL_TEXTURE_2D, 0,
+					g_ftexinternalformat, res[0], res[1], 0, g_ftexformat,
+					g_ftextype, NULL);
 		}
 	}
 }
 
 
-void glslview_gl_update_shader_uniform(struct uniform_location_t* uniform, glslviewShader* shader, int width, int height){
+void glslview_gl_update_shader_uniform(struct uniform_location_t* uniform,
+		glslviewShader* shader, int width, int height) {
+
 	float res[2];
 
 	glslview_verbose_printf("----------- fetching uniforms index location ----------\n");
@@ -408,6 +422,7 @@ void glslview_gl_update_shader_uniform(struct uniform_location_t* uniform, glslv
 	uniform->tex15 = glGetUniformLocation(shader->program, "tex15");
 	uniform->backbuffer = glGetUniformLocation(shader->program, "backbuffer");
 
+	/*	Debug.	*/
 	glslview_debug_printf("time %d\n", uniform->time);
 	glslview_debug_printf("deltatime %d\n", uniform->deltatime);
 	glslview_debug_printf("resolution %d\n", uniform->resolution);
@@ -438,7 +453,7 @@ void glslview_gl_update_shader_uniform(struct uniform_location_t* uniform, glslv
 	res[1] = height;
 	glUniform2fv(uniform->resolution, 1, &res[0]);
 
-	/**/
+	/*	*/
 	glslview_verbose_printf("----------- Assigning texture sampler index ----------\n");
 	glUniform1i(uniform->tex0, 0);
 	glUniform1i(uniform->tex1, 1);
@@ -474,10 +489,11 @@ void glslview_gl_update_shader_uniform(struct uniform_location_t* uniform, glslv
 }
 
 void glslview_gl_displaygraphic(SDL_Window* drawable){
+
 	/*	draw quad.	*/
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, sizeof(quad) / sizeof(quad[0]));
 
-	/**/
+	/*	*/
 	SDL_GL_SwapWindow(drawable);
 }
 
@@ -485,7 +501,8 @@ void glslview_gl_displaygraphic(SDL_Window* drawable){
 
 
 
-void glslview_gl_update_uniforms(UniformLocation* uniform, glslviewShader* shader, float ttime, long int deltatime){
+void glslview_gl_update_uniforms(UniformLocation* uniform,
+		glslviewShader* shader, float ttime, long int deltatime) {
 
 	if(uniform->time != -1){
 		glUniform1fv(uniform->time, 1, &ttime);
@@ -510,23 +527,29 @@ void glslview_gl_set_viewport(unsigned int width, unsigned int height){
 
 
 
+void glslview_gl_rendergraphic(SDL_Window* drawable,
+		glslviewShaderCollection* shaders, float ttime, float deltatime) {
 
-void glslview_gl_rendergraphic(SDL_Window* drawable, glslviewShaderCollection* shaders, float ttime, float deltatime){
 	int x;
 
 	for(x = 0; x < numShaderPass; x++){
 
+		/**/
 		glUseProgram(shaders[x].shader.program);
 
+		/*	*/
 		glslview_gl_update_uniforms(&shaders[x].uniform, &shaders[x].shader, ttime, deltatime);
 		glslview_gl_displaygraphic(drawable);
 
+		/*	*/
 		if(shaders[x].uniform.backbuffer != -1){
 			glActiveTexture(GL_TEXTURE0 + numTextures);
 			glBindTexture(fbackbuffertex.target, fbackbuffertex.texture);
 			glCopyTexImage2D(fbackbuffertex.target, 0, GL_RGBA, 0, 0, fbackbuffertex.width, fbackbuffertex.height, 0);
 		}
+
 	}
+
 	glClear(GL_COLOR_BUFFER_BIT);
 
 }
